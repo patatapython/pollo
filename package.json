@@ -1,0 +1,45 @@
+{
+  "name": "pollo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Anonymous shared shopping lists with passphrase authentication",
+  "author": "patatapython",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/patatapython/pollo"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest",
+    "test:ui": "vitest --ui"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.95.3",
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.1.3",
+    "next": "16.1.6",
+    "next-pwa": "^5.6.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-hot-toast": "^2.6.0",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitest/ui": "^4.0.18",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "happy-dom": "^20.6.1",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.0.18"
+  }
+}

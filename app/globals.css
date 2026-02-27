@@ -1,0 +1,346 @@
+@import "tailwindcss";
+
+@theme {
+  /* ============================================
+     PALETA RETRO VINTAGE COMPLETA
+     ============================================ */
+
+  /* Cremas y Beiges (backgrounds, neutrales claros) */
+  --color-retro-cream-50: #fefbf6;
+  --color-retro-cream-100: #fef9f0;
+  --color-retro-cream-200: #f9f0e0;
+  --color-retro-cream-300: #f4e4c1;
+  --color-retro-cream-400: #e8d5b5;
+  --color-retro-cream-500: #d9c3a0;
+  --color-retro-cream-600: #c8af88;
+  --color-retro-cream-700: #b89b70;
+  --color-retro-cream-800: #8f7655;
+  --color-retro-cream-900: #6b5940;
+
+  /* Naranjas Vintage (primarios, CTAs, bordes destacados) */
+  --color-retro-orange-50: #fef5ed;
+  --color-retro-orange-100: #fde8d7;
+  --color-retro-orange-200: #fbd4b4;
+  --color-retro-orange-300: #f5b886;
+  --color-retro-orange-400: #e89b3c;
+  --color-retro-orange-500: #d27d2d; /* Color principal del diseño */
+  --color-retro-orange-600: #b66924;
+  --color-retro-orange-700: #9a571e;
+  --color-retro-orange-800: #7e4619;
+  --color-retro-orange-900: #5e3413;
+
+  /* Marrones (textos, bordes secundarios) */
+  --color-retro-brown-50: #f8f6f4;
+  --color-retro-brown-100: #ebe6e0;
+  --color-retro-brown-200: #d4c8bb;
+  --color-retro-brown-300: #b8a490;
+  --color-retro-brown-400: #9d8569;
+  --color-retro-brown-500: #826b4f;
+  --color-retro-brown-600: #6a5641;
+  --color-retro-brown-700: #544437;
+  --color-retro-brown-800: #3e3229;
+  --color-retro-brown-900: #2a221c;
+
+  /* Verdes Retro (success states) */
+  --color-retro-green-50: #f0fdf4;
+  --color-retro-green-100: #dcfce7;
+  --color-retro-green-200: #bbf7d0;
+  --color-retro-green-300: #86efac;
+  --color-retro-green-400: #4ade80;
+  --color-retro-green-500: #22c55e;
+  --color-retro-green-600: #16a34a;
+  --color-retro-green-700: #15803d;
+  --color-retro-green-800: #166534;
+  --color-retro-green-900: #14532d;
+
+  /* Rojos Vintage (danger, errores) */
+  --color-retro-red-50: #fef2f2;
+  --color-retro-red-100: #fee2e2;
+  --color-retro-red-200: #fecaca;
+  --color-retro-red-300: #fca5a5;
+  --color-retro-red-400: #f87171;
+  --color-retro-red-500: #dc2626;
+  --color-retro-red-600: #b91c1c;
+  --color-retro-red-700: #991b1b;
+  --color-retro-red-800: #7f1d1d;
+  --color-retro-red-900: #5e1414;
+
+  /* Amarillos Cálidos (warnings) */
+  --color-retro-yellow-50: #fffbeb;
+  --color-retro-yellow-100: #fef3c7;
+  --color-retro-yellow-200: #fde68a;
+  --color-retro-yellow-300: #fcd34d;
+  --color-retro-yellow-400: #fbbf24;
+  --color-retro-yellow-500: #f59e0b;
+  --color-retro-yellow-600: #d97706;
+  --color-retro-yellow-700: #b45309;
+  --color-retro-yellow-800: #92400e;
+  --color-retro-yellow-900: #78350f;
+
+  /* ============================================
+     ALIASES PARA COMPATIBILIDAD
+     Mapeo de colores retro a nombres usados en la app
+     ============================================ */
+
+  /* Primary = Retro Orange (naranja tierra) */
+  --color-primary-50: var(--color-retro-orange-50);
+  --color-primary-100: var(--color-retro-orange-100);
+  --color-primary-200: var(--color-retro-orange-200);
+  --color-primary-300: var(--color-retro-orange-300);
+  --color-primary-400: var(--color-retro-orange-400);
+  --color-primary-500: var(--color-retro-orange-500);
+  --color-primary-600: var(--color-retro-orange-600);
+  --color-primary-700: var(--color-retro-orange-700);
+  --color-primary-800: var(--color-retro-orange-800);
+  --color-primary-900: var(--color-retro-orange-900);
+
+  /* Accent = Retro Brown (marrón cálido) */
+  --color-accent-50: var(--color-retro-brown-50);
+  --color-accent-100: var(--color-retro-brown-100);
+  --color-accent-200: var(--color-retro-brown-200);
+  --color-accent-300: var(--color-retro-brown-300);
+  --color-accent-400: var(--color-retro-brown-400);
+  --color-accent-500: var(--color-retro-brown-500);
+  --color-accent-600: var(--color-retro-brown-600);
+  --color-accent-700: var(--color-retro-brown-700);
+  --color-accent-800: var(--color-retro-brown-800);
+  --color-accent-900: var(--color-retro-brown-900);
+
+  /* Success = Retro Green (verde menta) */
+  --color-success-50: var(--color-retro-green-50);
+  --color-success-100: var(--color-retro-green-100);
+  --color-success-200: var(--color-retro-green-200);
+  --color-success-300: var(--color-retro-green-300);
+  --color-success-400: var(--color-retro-green-400);
+  --color-success-500: var(--color-retro-green-500);
+  --color-success-600: var(--color-retro-green-600);
+  --color-success-700: var(--color-retro-green-700);
+  --color-success-800: var(--color-retro-green-800);
+  --color-success-900: var(--color-retro-green-900);
+
+  /* Danger = Retro Red (rojo vintage) */
+  --color-danger-50: var(--color-retro-red-50);
+  --color-danger-100: var(--color-retro-red-100);
+  --color-danger-200: var(--color-retro-red-200);
+  --color-danger-300: var(--color-retro-red-300);
+  --color-danger-400: var(--color-retro-red-400);
+  --color-danger-500: var(--color-retro-red-500);
+  --color-danger-600: var(--color-retro-red-600);
+  --color-danger-700: var(--color-retro-red-700);
+  --color-danger-800: var(--color-retro-red-800);
+  --color-danger-900: var(--color-retro-red-900);
+
+  /* Warning = Retro Yellow (amarillo cálido) */
+  --color-warning-50: var(--color-retro-yellow-50);
+  --color-warning-100: var(--color-retro-yellow-100);
+  --color-warning-200: var(--color-retro-yellow-200);
+  --color-warning-300: var(--color-retro-yellow-300);
+  --color-warning-400: var(--color-retro-yellow-400);
+  --color-warning-500: var(--color-retro-yellow-500);
+  --color-warning-600: var(--color-retro-yellow-600);
+  --color-warning-700: var(--color-retro-yellow-700);
+  --color-warning-800: var(--color-retro-yellow-800);
+  --color-warning-900: var(--color-retro-yellow-900);
+
+  /* Neutral = Mix de Cream y Brown para neutrales */
+  --color-neutral-50: var(--color-retro-cream-50);
+  --color-neutral-100: var(--color-retro-cream-100);
+  --color-neutral-200: var(--color-retro-cream-200);
+  --color-neutral-300: var(--color-retro-cream-300);
+  --color-neutral-400: var(--color-retro-brown-400);
+  --color-neutral-500: var(--color-retro-brown-500);
+  --color-neutral-600: var(--color-retro-brown-600);
+  --color-neutral-700: var(--color-retro-brown-700);
+  --color-neutral-800: var(--color-retro-brown-800);
+  --color-neutral-900: var(--color-retro-brown-900);
+
+  /* Info = Retro Orange claro (para información) */
+  --color-info-50: var(--color-retro-orange-50);
+  --color-info-100: var(--color-retro-orange-100);
+  --color-info-200: var(--color-retro-orange-200);
+  --color-info-300: var(--color-retro-orange-300);
+  --color-info-400: var(--color-retro-orange-400);
+  --color-info-500: var(--color-retro-orange-500);
+  --color-info-600: var(--color-retro-orange-600);
+  --color-info-700: var(--color-retro-orange-700);
+  --color-info-800: var(--color-retro-orange-800);
+  --color-info-900: var(--color-retro-orange-900);
+
+  /* ============================================
+     TIPOGRAFÍA RETRO
+     Estilo typewriter/máquina de escribir
+     ============================================ */
+
+  --font-family-sans: 'Courier New', 'Courier', monospace;
+  --font-family-display: 'Courier New', 'Courier', monospace;
+  --font-family-mono: 'Courier New', 'Courier', monospace;
+
+  /* ============================================
+     BORDER RADIUS RETRO
+     Bordes redondeados generosos
+     ============================================ */
+
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius: 20px;      /* Default retro */
+  --radius-lg: 25px;
+  --radius-xl: 30px;
+  --radius-2xl: 35px;
+  --radius-3xl: 40px;
+  --radius-full: 9999px;
+
+  /* ============================================
+     ANIMACIONES RETRO
+     ============================================ */
+
+  --animate-retro-press: retroPress 0.15s ease-out;
+  --animate-retro-fade-in: retroFadeIn 0.4s ease-out;
+  --animate-retro-wiggle: retroWiggle 0.5s ease-in-out;
+}
+
+/* ============================================
+   ANIMACIONES KEYFRAMES
+   ============================================ */
+
+@keyframes retroPress {
+  0% {
+    transform: translate(0, 0);
+    box-shadow: 8px 8px 0px rgba(210, 125, 45, 0.3);
+  }
+  100% {
+    transform: translate(4px, 4px);
+    box-shadow: 2px 2px 0px rgba(210, 125, 45, 0.4);
+  }
+}
+
+@keyframes retroFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes retroWiggle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-2deg);
+  }
+  75% {
+    transform: rotate(2deg);
+  }
+}
+
+/* Mantener animación de fade in suave */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Mantener animación de slide up */
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Pulso suave */
+@keyframes pulseSoft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ============================================
+   UTILIDADES GLOBALES RETRO
+   ============================================ */
+
+/* Text shadow retro para títulos */
+.text-shadow-retro {
+  text-shadow: 4px 4px 0px rgba(210, 125, 45, 0.3);
+}
+
+.text-shadow-retro-sm {
+  text-shadow: 2px 2px 0px rgba(210, 125, 45, 0.2);
+}
+
+.text-shadow-retro-lg {
+  text-shadow: 6px 6px 0px rgba(210, 125, 45, 0.4);
+}
+
+/* Pattern de fondo retro (opcional para decoraciones) */
+.bg-retro-pattern {
+  background-image:
+    radial-gradient(circle at 25px 25px, rgba(210, 125, 45, 0.05) 2%, transparent 0%),
+    radial-gradient(circle at 75px 75px, rgba(210, 125, 45, 0.05) 2%, transparent 0%);
+  background-size: 100px 100px;
+}
+
+/* Scrollbar retro para navegadores Webkit */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-retro-cream-200);
+  border-left: 3px solid var(--color-retro-orange-500);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-retro-orange-500);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-retro-orange-600);
+}
+
+/* Soporte para Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-retro-orange-500) var(--color-retro-cream-200);
+}
+
+/* Border width custom para Tailwind (border-3) */
+@layer utilities {
+  .border-3 {
+    border-width: 3px;
+  }
+
+  .border-t-3 {
+    border-top-width: 3px;
+  }
+
+  .border-b-3 {
+    border-bottom-width: 3px;
+  }
+
+  .border-l-3 {
+    border-left-width: 3px;
+  }
+
+  .border-r-3 {
+    border-right-width: 3px;
+  }
+
+  .border-l-8 {
+    border-left-width: 8px;
+  }
+}

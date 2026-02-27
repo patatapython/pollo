@@ -1,0 +1,3 @@
+-- Migration: single-list model → workspace model
+-- This migration is kept for historical reference.
+-- For a fresh install, use supabase/schema.sql instead.

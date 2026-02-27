@@ -1,0 +1,3 @@
+-- Initial schema: single-list model (superseded by 001_migrate_to_workspaces.sql)
+-- This migration is kept for historical reference.
+-- For a fresh install, use supabase/schema.sql instead.
