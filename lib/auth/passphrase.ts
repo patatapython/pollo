@@ -116,6 +116,10 @@ export function repairKey(word: string): string {
 
 let repairMap: Map<string, string[]> | null = null;
 
+/**
+ * Lazily builds and caches, for the process lifetime, a map from repair-key
+ * to the dictionary words that share it (see `repairKey`).
+ */
 function getRepairMap(): Map<string, string[]> {
   if (!repairMap) {
     repairMap = new Map();
@@ -132,6 +136,9 @@ function getRepairMap(): Map<string, string[]> {
   return repairMap;
 }
 
+// Caps how many candidate phrases are HMAC-looked-up and bcrypt-verified per
+// request, bounding work per call; real passphrases need far fewer since only
+// ~18 dictionary keys have collisions, all 2-way.
 const MAX_CANDIDATES = 64;
 
 /**
@@ -144,6 +151,11 @@ const MAX_CANDIDATES = 64;
 export function candidatePassphrases(input: string): string[] {
   const typed = input.trim().replace(/\s+/g, ' ');
   const words = typed.split(' ');
+
+  // Defensive bound: never recurse on pathological input, even if a future
+  // caller skips PassphraseSchema. Real passphrases are <= 12 tokens.
+  if (words.length > 12) return [typed];
+
   const map = getRepairMap();
 
   const perWord: string[][] = words.map((w) => {

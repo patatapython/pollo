@@ -70,6 +70,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (workspaceError || !matched) {
+      if (workspaceError) {
+        logger.error('Workspace lookup error', workspaceError, { endpoint: '/api/workspaces/access' });
+      }
+
       // Log failed attempt
       await supabase
         .from('rate_limit_attempts')

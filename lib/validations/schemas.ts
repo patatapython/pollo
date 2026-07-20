@@ -7,12 +7,13 @@ import { z } from 'zod';
 export const PassphraseSchema = z
   .string()
   .min(15, 'Passphrase must be at least 15 characters')
+  .max(200, 'Passphrase must be at most 200 characters')
   .refine(
     (val) => {
       const words = val.trim().split(/\s+/);
-      return words.length >= 4;
+      return words.length >= 4 && words.length <= 12;
     },
-    'Passphrase must contain at least 4 words separated by spaces'
+    'Passphrase must contain between 4 and 12 words separated by spaces'
   )
   .refine(
     (val) => {
