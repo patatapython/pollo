@@ -18,7 +18,7 @@ export const PassphraseSchema = z
     (val) => {
       // Validación: palabras válidas (sin números aleatorios, solo caracteres)
       const words = val.trim().split(/\s+/);
-      return words.every((word) => /^[a-záéíóúñ]+$/i.test(word));
+      return words.every((word) => /^[a-záéíóúñü_]+$/i.test(word));
     },
     'Each word must contain only letters'
   );
