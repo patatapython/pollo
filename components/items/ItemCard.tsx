@@ -111,7 +111,7 @@ export function ItemCard({ item, onToggle, onDelete, isLoading, listId }: ItemCa
           ) : (
             <span
               onDoubleClick={() => !item.is_completed && setIsEditing(true)}
-              className={`block text-base font-medium transition-all cursor-text select-none ${
+              className={`block break-words text-base font-medium transition-all cursor-text select-none ${
                 item.is_completed
                   ? 'line-through text-retro-brown-600'
                   : 'text-retro-brown-800 hover:bg-retro-cream-100 px-2 py-1 rounded'

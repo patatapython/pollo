@@ -23,7 +23,7 @@ export function ListCard({ list, onDelete }: ListCardProps) {
     <div className="relative group">
       <Link href={`/lists/${list.id}`}>
         <div className="bg-retro-cream-100 border-3 border-primary-500 border-l-8 border-l-primary-600 rounded-[25px] p-6 shadow-[10px_10px_0px_rgba(210,125,45,0.3)] hover:shadow-[14px_14px_0px_rgba(210,125,45,0.35)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all duration-200 cursor-pointer">
-          <h3 className="text-xl font-bold text-retro-brown-800 mb-3 uppercase tracking-wide">{list.name}</h3>
+          <h3 className="text-xl font-bold text-retro-brown-800 mb-3 uppercase tracking-wide break-words">{list.name}</h3>
 
         {previewItems.length > 0 && (
           <div className="mb-4 space-y-2">
@@ -38,7 +38,7 @@ export function ListCard({ list, onDelete }: ListCardProps) {
                     )}
                   </div>
                 </div>
-                <span className={`flex-1 leading-tight ${item.is_completed ? 'line-through text-retro-brown-500' : 'text-retro-brown-800 font-medium'}`}>
+                <span className={`flex-1 min-w-0 break-words leading-tight ${item.is_completed ? 'line-through text-retro-brown-500' : 'text-retro-brown-800 font-medium'}`}>
                   {item.name}
                 </span>
               </div>

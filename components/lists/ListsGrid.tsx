@@ -72,7 +72,7 @@ export function ListsGrid({ lists, onDelete, onCreateList, isLoading, isCreating
                 onKeyDown={handleKeyDown}
                 disabled={isCreating}
                 autoFocus
-                className="w-full px-3 py-2 text-sm font-medium border-2 border-primary-400 rounded-[12px] bg-retro-cream-50 text-retro-brown-800 focus:outline-none focus:border-primary-600 mb-3 placeholder:text-retro-brown-400"
+                className="w-full px-3 py-2 text-base font-medium border-2 border-primary-400 rounded-[12px] bg-retro-cream-50 text-retro-brown-800 focus:outline-none focus:border-primary-600 mb-3 placeholder:text-retro-brown-400"
               />
               <div className="flex gap-2">
                 <button
