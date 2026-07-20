@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { AccessSchema } from '@/lib/validations/schemas';
 import { computeLookup, verify } from '@/lib/auth/passphrase';
 import { createSession } from '@/lib/auth/session';
@@ -110,9 +111,9 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('validation')) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error.issues[0]?.message || 'Validation error' },
         { status: 400 }
       );
     }
