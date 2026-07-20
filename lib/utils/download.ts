@@ -42,10 +42,10 @@ export function generateBackupContent(passphrase: string): string {
   const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pollolist.app';
 
   return `═══════════════════════════════════════════════════════════
-  POLLO - KIT DE RECUPERACION DE ACCESO
+  POLLO - KIT DE RECUPERACIÓN DE ACCESO
 ═══════════════════════════════════════════════════════════
 
-Fecha de creacion: ${today}
+Fecha de creación: ${today}
 
 TUS PALABRAS DE ACCESO (PASSPHRASE):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -54,32 +54,32 @@ TUS PALABRAS DE ACCESO (PASSPHRASE):
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-IMPORTANTE - LEE ESTO CON ATENCION:
+IMPORTANTE - LEE ESTO CON ATENCIÓN:
 
-- Estas 5 palabras son la UNICA forma de acceder a tu espacio
+- Estas 5 palabras son la ÚNICA forma de acceder a tu espacio
 - NO se pueden recuperar si las pierdes
 - Guarda este archivo en 2 lugares diferentes (nube + local)
-- NO compartas estas palabras publicamente
-- Puedes compartir con personas de confianza (companeros, familia)
+- NO compartas estas palabras públicamente
+- Puedes compartir con personas de confianza (compañeros, familia)
 
 ═══════════════════════════════════════════════════════════
 
-COMO FUNCIONA:
+CÓMO FUNCIONA:
 
 1. Para acceder a tu espacio:
-   -> Ve a la aplicacion
+   -> Ve a la aplicación
    -> Introduce estas 5 palabras exactamente como aparecen
-   -> Listo! Accederas a todas tus listas
+   -> ¡Listo! Accederás a todas tus listas
 
 2. Para compartir tu espacio con alguien:
    -> Comparte estas palabras con esa persona
    -> Ella las introduce al acceder
-   -> Ambos veran las mismas listas (ideal para companeros de piso)
+   -> Ambos verán las mismas listas (ideal para compañeros de piso)
 
 3. Si pierdes estas palabras:
-   -> NO podras recuperar el acceso
-   -> Tendras que crear un nuevo espacio desde cero
-   -> Por eso es CRITICO guardar este archivo
+   -> NO podrás recuperar el acceso
+   -> Tendrás que crear un nuevo espacio desde cero
+   -> Por eso es CRÍTICO guardar este archivo
 
 ═══════════════════════════════════════════════════════════
 
@@ -87,15 +87,15 @@ RECOMENDACIONES DE SEGURIDAD:
 
 -> Guarda este archivo en Google Drive, Dropbox o iCloud
 -> Haz una copia en tu ordenador local
--> Envia una copia a tu email personal
--> Considera imprimirlo y guardarlo fisicamente
+-> Envía una copia a tu email personal
+-> Considera imprimirlo y guardarlo físicamente
 -> Si compartes con alguien, hazlo por mensaje privado
 
 ═══════════════════════════════════════════════════════════
 
 Para acceder: ${appUrl}
 
-Disfruta de Pollo!
+¡Disfruta de Pollo!
 
 ═══════════════════════════════════════════════════════════
 `;
