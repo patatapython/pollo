@@ -91,7 +91,7 @@ export function ListsGrid({ lists, onDelete, onCreateList, isLoading, isCreating
                   type="button"
                   onClick={handleCancel}
                   disabled={isCreating}
-                  className="w-10 h-10 flex items-center justify-center rounded-[12px] border-2 border-retro-brown-300 bg-retro-cream-50 hover:border-retro-brown-500 transition-colors"
+                  className="w-11 h-11 flex items-center justify-center rounded-[12px] border-2 border-retro-brown-300 bg-retro-cream-50 hover:border-retro-brown-500 transition-colors"
                 >
                   <svg className="h-4 w-4 text-retro-brown-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

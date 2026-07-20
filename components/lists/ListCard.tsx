@@ -76,7 +76,7 @@ export function ListCard({ list, onDelete }: ListCardProps) {
           setShowConfirm(true);
         }}
         aria-label={t('listCard.deleteTitle')}
-        className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-retro-red-500 border-2 border-retro-red-700 shadow-[4px_4px_0px_rgba(220,38,38,0.3)] hover:shadow-[2px_2px_0px_rgba(220,38,38,0.4)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all duration-200 flex items-center justify-center group-hover:opacity-100 opacity-70 hover:opacity-100"
+        className="absolute -top-3 -right-3 w-11 h-11 rounded-full bg-retro-red-500 border-2 border-retro-red-700 shadow-[4px_4px_0px_rgba(220,38,38,0.3)] hover:shadow-[2px_2px_0px_rgba(220,38,38,0.4)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all duration-200 flex items-center justify-center group-hover:opacity-100 opacity-70 hover:opacity-100"
         title={t('listCard.deleteTitle')}
       >
         <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
