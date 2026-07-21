@@ -114,7 +114,11 @@ export interface ItemRepository {
 export interface RateLimitRepository {
   /** Intentos fallidos de esa direccion desde el instante dado. */
   countFailedSince(ipAddress: string, since: Date): Promise<number>;
-  /** Registra un intento. No lanza: el fallo se registra y se sigue. */
+  /**
+   * Registra un intento. Lanza como el resto: que un fallo al anotar no deba
+   * tumbar la peticion es una decision de la ruta, no del repositorio. Si se
+   * tragase aqui, ningun llamante podria volver a elegir.
+   */
   record(ipAddress: string, success: boolean, at: Date): Promise<void>;
   /** Borra intentos anteriores al instante dado. Devuelve cuantos. */
   deleteOlderThan(cutoff: Date): Promise<number>;

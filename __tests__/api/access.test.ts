@@ -6,10 +6,6 @@ import { hash, computeLookup } from '@/lib/auth/passphrase';
 // Only the outbound dependencies are mocked. `@/lib/auth/passphrase` is
 // deliberately NOT mocked: the candidate-repair path it provides is the whole
 // point of these tests, and mocking it would hide whether repair actually works.
-vi.mock('@/lib/supabase/admin', () => ({
-  getAdminClient: vi.fn(),
-}));
-
 vi.mock('@/lib/logger', () => ({
   logger: { error: vi.fn() },
 }));
@@ -18,8 +14,14 @@ vi.mock('@/lib/auth/session', () => ({
   createSession: vi.fn(),
 }));
 
-import { getAdminClient } from '@/lib/supabase/admin';
+vi.mock('@/lib/repositories', async (importOriginal) => {
+  // RepositoryError must stay the real class, or `instanceof` stops working.
+  const actual = await importOriginal<typeof import('@/lib/repositories')>();
+  return { ...actual, getRepositories: vi.fn() };
+});
+
 import { createSession } from '@/lib/auth/session';
+import { getRepositories, RepositoryError } from '@/lib/repositories';
 import { logger } from '@/lib/logger';
 
 /**
@@ -34,40 +36,6 @@ const MANGLED = 'Absorcion anillo academico animal acido';
 
 const WORKSPACE_ID = '11111111-2222-3333-4444-555555555555';
 
-type QueryResult = { data?: unknown; count?: number | null; error?: unknown };
-
-/**
- * Every PostgREST builder method the route calls must be listed here. A test
- * that exercises a new one (`.order()`, `.limit()`, ...) has to add its name
- * first, or the stub throws `undefined is not a function` from inside the route
- * rather than failing on the assertion.
- */
-const BUILDER_METHODS = ['select', 'eq', 'gt', 'lt', 'in', 'insert', 'single'] as const;
-
-type MockBuilder = Record<(typeof BUILDER_METHODS)[number], ReturnType<typeof vi.fn>> & {
-  then: (resolve: (value: QueryResult) => unknown) => unknown;
-};
-
-/**
- * Chainable, awaitable stand-in for a PostgREST query builder.
- * `insertResult` lets a table answer differently to `.insert()` than to a
- * read, which is what separates "the rate-limit query failed" from "recording
- * the attempt failed".
- */
-function makeBuilder(result: QueryResult, insertResult?: QueryResult): MockBuilder {
-  const builder = {} as MockBuilder;
-  for (const method of BUILDER_METHODS) {
-    builder[method] = vi.fn(() => builder);
-  }
-  builder.then = (resolve: (value: QueryResult) => unknown) => resolve(result);
-
-  if (insertResult) {
-    const inserted = { then: (r: (v: QueryResult) => unknown) => r(insertResult) };
-    builder.insert = vi.fn(() => inserted as unknown as MockBuilder);
-  }
-  return builder;
-}
-
 function buildRequest(passphrase: unknown) {
   return new NextRequest('http://localhost/api/workspaces/access', {
     method: 'POST',
@@ -75,20 +43,26 @@ function buildRequest(passphrase: unknown) {
   });
 }
 
+/** A repository failure, shaped as the layer really raises it. */
+function repositoryFailure(message: string) {
+  return new RepositoryError(message, { code: '57014', message: 'statement timeout' });
+}
+
 describe('/api/workspaces/access', () => {
   let passphraseHash: string;
-  let rateLimit: MockBuilder;
-  let workspaces: MockBuilder;
+  let findByLookups: ReturnType<typeof vi.fn>;
+  let countFailedSince: ReturnType<typeof vi.fn>;
+  let record: ReturnType<typeof vi.fn>;
 
   beforeAll(async () => {
     process.env.SERVER_SECRET = 'test-secret-key-at-least-32-characters-long-12345';
     passphraseHash = await hash(ORIGINAL);
   });
 
-  /** Point the `workspaces` table at a stored row, or at no rows at all. */
+  /** Point the workspace lookup at a stored row, or at no rows at all. */
   function seedWorkspace(stored: boolean) {
-    workspaces = makeBuilder({
-      data: stored
+    findByLookups.mockResolvedValue(
+      stored
         ? [
             {
               id: WORKSPACE_ID,
@@ -96,20 +70,22 @@ describe('/api/workspaces/access', () => {
               passphrase_lookup: computeLookup(ORIGINAL),
             },
           ]
-        : [],
-      error: null,
-    });
+        : []
+    );
   }
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    rateLimit = makeBuilder({ count: 0, error: null });
+    findByLookups = vi.fn();
+    countFailedSince = vi.fn().mockResolvedValue(0);
+    record = vi.fn().mockResolvedValue(undefined);
     seedWorkspace(true);
 
-    vi.mocked(getAdminClient).mockReturnValue({
-      from: vi.fn((table: string) => (table === 'workspaces' ? workspaces : rateLimit)),
-    } as unknown as ReturnType<typeof getAdminClient>);
+    vi.mocked(getRepositories).mockReturnValue({
+      workspaces: { findByLookups },
+      rateLimits: { countFailedSince, record },
+    } as unknown as ReturnType<typeof getRepositories>);
   });
 
   describe('input validation', () => {
@@ -137,8 +113,8 @@ describe('/api/workspaces/access', () => {
       const res = await POST(buildRequest(tooLong));
 
       expect(res.status).toBe(400);
-      expect(workspaces.in).not.toHaveBeenCalled();
-      expect(rateLimit.insert).not.toHaveBeenCalled();
+      expect(findByLookups).not.toHaveBeenCalled();
+      expect(record).not.toHaveBeenCalled();
     });
 
     it('returns 400 for a passphrase with more than 12 words', async () => {
@@ -147,8 +123,8 @@ describe('/api/workspaces/access', () => {
       const res = await POST(buildRequest(tooManyWords));
 
       expect(res.status).toBe(400);
-      expect(workspaces.in).not.toHaveBeenCalled();
-      expect(rateLimit.insert).not.toHaveBeenCalled();
+      expect(findByLookups).not.toHaveBeenCalled();
+      expect(record).not.toHaveBeenCalled();
     });
   });
 
@@ -171,10 +147,8 @@ describe('/api/workspaces/access', () => {
     it('queries the stored lookup among the candidate lookups', async () => {
       await POST(buildRequest(MANGLED));
 
-      expect(workspaces.in).toHaveBeenCalledTimes(1);
-      const [column, lookups] = workspaces.in.mock.calls[0];
-      expect(column).toBe('passphrase_lookup');
-      expect(lookups).toContain(computeLookup(ORIGINAL));
+      expect(findByLookups).toHaveBeenCalledTimes(1);
+      expect(findByLookups.mock.calls[0][0]).toContain(computeLookup(ORIGINAL));
     });
 
     it('rejects an unknown passphrase and records the failed attempt', async () => {
@@ -184,23 +158,18 @@ describe('/api/workspaces/access', () => {
 
       expect(res.status).toBe(401);
       expect(createSession).not.toHaveBeenCalled();
-      expect(rateLimit.insert).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false })
-      );
+      expect(record).toHaveBeenCalledWith(expect.any(String), false, expect.any(Date));
     });
 
     it('rejects a row whose lookup matches but whose hash does not', async () => {
       // Defence in depth: the HMAC lookup alone must never grant access.
-      workspaces = makeBuilder({
-        data: [
-          {
-            id: WORKSPACE_ID,
-            passphrase_hash: await hash('anillo animal anoche ansia anhelo'),
-            passphrase_lookup: computeLookup(ORIGINAL),
-          },
-        ],
-        error: null,
-      });
+      findByLookups.mockResolvedValue([
+        {
+          id: WORKSPACE_ID,
+          passphrase_hash: await hash('anillo animal anoche ansia anhelo'),
+          passphrase_lookup: computeLookup(ORIGINAL),
+        },
+      ]);
 
       const res = await POST(buildRequest(ORIGINAL));
 
@@ -211,7 +180,7 @@ describe('/api/workspaces/access', () => {
 
   describe('rate limiting', () => {
     it('returns 429 once the failed-attempt threshold is reached', async () => {
-      rateLimit = makeBuilder({ count: 10, error: null });
+      countFailedSince.mockResolvedValue(10);
 
       const res = await POST(buildRequest(ORIGINAL));
 
@@ -220,25 +189,41 @@ describe('/api/workspaces/access', () => {
     });
 
     it('returns 500 when the rate-limit query itself fails', async () => {
-      rateLimit = makeBuilder({ count: null, error: { message: 'boom' } });
+      countFailedSince.mockRejectedValue(repositoryFailure('Failed to count failed attempts'));
 
       const res = await POST(buildRequest(ORIGINAL));
 
       expect(res.status).toBe(500);
+      expect(findByLookups).not.toHaveBeenCalled();
     });
 
     it('logs a failure to record the attempt instead of discarding it', async () => {
-      // If this insert fails silently the limiter stops counting and nothing
+      // If this write fails silently the limiter stops counting and nothing
       // says so -- during exactly the degradation where it matters most.
-      rateLimit = makeBuilder({ count: 0, error: null }, { error: { message: 'boom' } });
       seedWorkspace(false);
+      record.mockRejectedValue(repositoryFailure('Failed to record attempt'));
 
       const res = await POST(buildRequest(ORIGINAL));
 
       expect(res.status).toBe(401);
       expect(logger.error).toHaveBeenCalledWith(
         'Failed attempt not recorded',
-        expect.objectContaining({ message: 'boom' }),
+        expect.objectContaining({ message: 'Failed to record attempt' }),
+        expect.anything()
+      );
+    });
+
+    it('still authenticates when recording a successful attempt fails', async () => {
+      // The limiter degrading must never cost a valid passphrase its session.
+      record.mockRejectedValue(repositoryFailure('Failed to record attempt'));
+
+      const res = await POST(buildRequest(ORIGINAL));
+
+      expect(res.status).toBe(200);
+      expect(createSession).toHaveBeenCalledWith(WORKSPACE_ID);
+      expect(logger.error).toHaveBeenCalledWith(
+        'Successful attempt not recorded',
+        expect.anything(),
         expect.anything()
       );
     });
@@ -247,13 +232,13 @@ describe('/api/workspaces/access', () => {
     // failure is not a wrong guess, so it costs no attempt and reveals nothing
     // about whether the passphrase was valid.
     it('returns 500 without recording an attempt when the workspace lookup fails', async () => {
-      workspaces = makeBuilder({ data: null, error: { message: 'boom' } });
+      findByLookups.mockRejectedValue(repositoryFailure('Failed to look up workspaces'));
 
       const res = await POST(buildRequest(ORIGINAL));
 
       expect(res.status).toBe(500);
       await expect(res.json()).resolves.toEqual({ error: 'Internal server error' });
-      expect(rateLimit.insert).not.toHaveBeenCalled();
+      expect(record).not.toHaveBeenCalled();
       expect(createSession).not.toHaveBeenCalled();
     });
   });

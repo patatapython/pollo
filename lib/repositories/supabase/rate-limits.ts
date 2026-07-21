@@ -1,5 +1,4 @@
 import { getAdminClient } from '@/lib/supabase/admin';
-import { logger } from '@/lib/logger';
 import { RateLimitRepository, RepositoryError } from '@/lib/repositories/types';
 
 export const supabaseRateLimitRepository: RateLimitRepository = {
@@ -17,8 +16,6 @@ export const supabaseRateLimitRepository: RateLimitRepository = {
   },
 
   async record(ipAddress, success, at) {
-    // Si esto lanzara, un fallo al anotar el intento tumbaria la peticion que
-    // lo origino. Se registra y se sigue: el limitador se degrada, la ruta no.
     const { error } = await getAdminClient()
       .from('rate_limit_attempts')
       .insert({
@@ -27,12 +24,7 @@ export const supabaseRateLimitRepository: RateLimitRepository = {
         attempted_at: at.toISOString(),
       });
 
-    if (error) {
-      logger.error('Rate limit attempt not recorded', error, {
-        repository: 'rateLimits',
-        method: 'record',
-      });
-    }
+    if (error) throw new RepositoryError('Failed to record attempt', error);
   },
 
   async deleteOlderThan(cutoff) {
