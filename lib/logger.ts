@@ -24,13 +24,25 @@ function truncate(value: string): string {
  * `hint` are deliberately excluded: those are the fields that echo the offending
  * row values back.
  */
+/**
+ * Error types whose `message` quotes the input back. `JSON.parse` on a body
+ * that is not JSON yields `Unexpected token 'a', "absorcion "... is not valid
+ * JSON` — ten characters of the request body, which on the access endpoint is
+ * the first word of a passphrase. The name alone identifies the failure.
+ */
+const ECHOES_INPUT = new Set(['SyntaxError']);
+
 export function redactError(error: unknown): unknown {
   if (error === null || error === undefined) return undefined;
 
   if (typeof error === 'object') {
     const source = error as Record<string, unknown>;
     const redacted: Record<string, string> = {};
-    for (const field of ['name', 'code', 'message'] as const) {
+    const fields =
+      typeof source.name === 'string' && ECHOES_INPUT.has(source.name)
+        ? (['name', 'code'] as const)
+        : (['name', 'code', 'message'] as const);
+    for (const field of fields) {
       const value = source[field];
       if (typeof value === 'string' && value.length > 0) redacted[field] = truncate(value);
       else if (typeof value === 'number') redacted[field] = String(value);

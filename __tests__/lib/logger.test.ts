@@ -47,6 +47,23 @@ describe('logger', () => {
       expect(redactError(undefined)).toBeUndefined();
     });
 
+    it('drops the message of an error that quotes the input back', () => {
+      // V8 puts ten characters of the parsed text into a JSON SyntaxError. On
+      // the access endpoint that text is the request body: a passphrase.
+      let parseError: unknown;
+      try {
+        JSON.parse('absorcion anillo academico animal acido');
+      } catch (e) {
+        parseError = e;
+      }
+
+      const result = redactError(parseError) as { name: string; message?: string };
+
+      expect(result.name).toBe('SyntaxError');
+      expect(result.message).toBeUndefined();
+      expect(JSON.stringify(result)).not.toContain('absorcion');
+    });
+
     it('keeps a native Error identifiable', () => {
       const result = redactError(new Error('boom')) as { name: string; message: string };
 

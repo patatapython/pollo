@@ -75,6 +75,17 @@ export function acquireBodyScrollLock(): () => void {
   };
 }
 
+/**
+ * Drops every outstanding lock and forgets the saved style.
+ * For tests only: the counter outlives an individual test, so a failed
+ * assertion before its release would otherwise corrupt the ones after it.
+ */
+export function resetBodyScrollLock(): void {
+  lockCount = 0;
+  saved = null;
+  savedScrollY = 0;
+}
+
 /** Locks page scrolling for as long as `isLocked` is true. */
 export function useBodyScrollLock(isLocked: boolean): void {
   useEffect(() => {

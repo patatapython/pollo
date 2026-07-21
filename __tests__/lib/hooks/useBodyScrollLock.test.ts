@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { acquireBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
+import { acquireBodyScrollLock, resetBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 
 /**
  * These exercise the DOM logic behind `useBodyScrollLock`. The two properties
@@ -9,6 +9,9 @@ import { acquireBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
  */
 describe('acquireBodyScrollLock', () => {
   beforeEach(() => {
+    // The counter is module state, so it outlives a test that fails before its
+    // release and would otherwise cascade into every test after it.
+    resetBodyScrollLock();
     document.body.removeAttribute('style');
     window.scrollTo(0, 0);
   });
