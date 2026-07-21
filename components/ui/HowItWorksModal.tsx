@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useT } from '@/lib/hooks/useT';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 
 interface HowItWorksModalProps {
   isOpen: boolean;
@@ -60,15 +61,7 @@ export function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProps) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen, onClose]);
 
-  // Lock body scroll while the modal is open
-  useEffect(() => {
-    if (!isOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 

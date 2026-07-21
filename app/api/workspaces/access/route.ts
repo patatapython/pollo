@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       .gt('attempted_at', fifteenMinutesAgo.toISOString());
 
     if (attemptsError) {
-      logger.error('Rate limit check error', attemptsError);
+      logger.error('Rate limit check error', attemptsError, { endpoint: '/api/workspaces/access' });
       return NextResponse.json(
         { error: 'Internal server error' },
         { status: 500 }
@@ -61,6 +61,17 @@ export async function POST(request: NextRequest) {
       .select('id, passphrase_hash, passphrase_lookup')
       .in('passphrase_lookup', [...lookupToCandidate.keys()]);
 
+    // Un fallo de la consulta no es un intento fallido: no se penaliza al
+    // usuario ni se le informa de que su passphrase es incorrecta. Mismo
+    // tratamiento que el error de la consulta de rate limit, más arriba.
+    if (workspaceError) {
+      logger.error('Workspace lookup error', workspaceError, { endpoint: '/api/workspaces/access' });
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      );
+    }
+
     let matched: { id: string } | null = null;
     for (const ws of workspaces ?? []) {
       const candidate = lookupToCandidate.get(ws.passphrase_lookup);
@@ -70,13 +81,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (workspaceError || !matched) {
-      if (workspaceError) {
-        logger.error('Workspace lookup error', workspaceError, { endpoint: '/api/workspaces/access' });
-      }
-
-      // Log failed attempt
-      await supabase
+    if (!matched) {
+      // Si este insert falla en silencio, el limitador deja de contar sin que
+      // nadie se entere: justo durante la degradación en que más importa.
+      const { error: attemptError } = await supabase
         .from('rate_limit_attempts')
         .insert({
           ip_address: clientIp,
@@ -84,20 +92,32 @@ export async function POST(request: NextRequest) {
           attempted_at: now.toISOString(),
         });
 
+      if (attemptError) {
+        logger.error('Failed attempt not recorded', attemptError, {
+          endpoint: '/api/workspaces/access',
+        });
+      }
+
       return NextResponse.json(
         { error: 'Invalid passphrase' },
         { status: 401 }
       );
     }
 
-    // Log successful attempt
-    await supabase
+    // Registrar intento correcto
+    const { error: successAttemptError } = await supabase
       .from('rate_limit_attempts')
       .insert({
         ip_address: clientIp,
         success: true,
         attempted_at: now.toISOString(),
       });
+
+    if (successAttemptError) {
+      logger.error('Successful attempt not recorded', successAttemptError, {
+        endpoint: '/api/workspaces/access',
+      });
+    }
 
     // Crear sesión JWT y setear cookie
     await createSession(matched.id);

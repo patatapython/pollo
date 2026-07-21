@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { Button } from './Button';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -34,15 +35,7 @@ export function ConfirmModal({
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen, onCancel]);
 
-  // Lock body scroll while the modal is open
-  useEffect(() => {
-    if (!isOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 

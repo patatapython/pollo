@@ -42,6 +42,35 @@ describe('schemas', () => {
       const result = PassphraseSchema.safeParse(valid);
       expect(result.success).toBe(true);
     });
+
+    // The two upper bounds below are the only thing keeping attacker-controlled
+    // input from reaching candidate expansion unbounded. They are load-bearing,
+    // not stylistic: see docs/auth-invariants.md.
+    it('should accept a passphrase of exactly 200 characters', () => {
+      const valid = ['a'.repeat(50), 'a'.repeat(49), 'a'.repeat(49), 'a'.repeat(49)].join(' ');
+      expect(valid).toHaveLength(200);
+      const result = PassphraseSchema.safeParse(valid);
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject passphrases longer than 200 characters', () => {
+      const invalid = ['a'.repeat(51), 'a'.repeat(49), 'a'.repeat(49), 'a'.repeat(49)].join(' ');
+      expect(invalid).toHaveLength(201);
+      const result = PassphraseSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept a passphrase of exactly 12 words', () => {
+      const valid = Array.from({ length: 12 }, () => 'mesa').join(' ');
+      const result = PassphraseSchema.safeParse(valid);
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject passphrases with more than 12 words', () => {
+      const invalid = Array.from({ length: 13 }, () => 'mesa').join(' ');
+      const result = PassphraseSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
   });
 
   describe('CreateListSchema', () => {
