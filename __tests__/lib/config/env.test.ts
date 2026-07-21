@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { validateEnvVars } from '@/lib/config/env';
+import { validateEnvVars, getDbDriver } from '@/lib/config/env';
 
 describe('validateEnvVars', () => {
     const originalEnv = process.env;
@@ -50,5 +50,51 @@ describe('validateEnvVars', () => {
         process.env.NODE_ENV = 'test';
 
         expect(() => validateEnvVars()).toThrow(/JWT_SECRET must be at least 32 characters/);
+    });
+
+    /**
+     * Which database serves the app is declared, never inferred from whether a
+     * connection string happens to be present. A stale DATABASE_URL left in an
+     * environment must not be able to redirect production traffic on its own.
+     */
+    describe('database driver selection', () => {
+        beforeEach(() => {
+            process.env.JWT_SECRET = 'a-super-long-secret-key-that-is-at-least-32-chars';
+            process.env.SERVER_SECRET = 'another-super-long-secret-key-that-is-at-least-32-chars';
+        });
+
+        it('defaults to supabase when nothing is declared', () => {
+            delete process.env.DB_DRIVER;
+            expect(getDbDriver()).toBe('supabase');
+        });
+
+        it('refuses a driver it does not implement', () => {
+            process.env.DB_DRIVER = 'mysql';
+            expect(() => getDbDriver()).toThrow(/DB_DRIVER="mysql" no existe/);
+        });
+
+        it('does not switch just because DATABASE_URL is present', () => {
+            delete process.env.DB_DRIVER;
+            process.env.DATABASE_URL = 'postgres://user:pass@host:5432/pollo';
+
+            expect(getDbDriver()).toBe('supabase');
+        });
+
+        it('requires the connection string once postgres is declared', () => {
+            process.env.DB_DRIVER = 'postgres';
+            delete process.env.DATABASE_URL;
+
+            expect(() => validateEnvVars()).toThrow(/DATABASE_URL is required/);
+        });
+
+        it('stops demanding Supabase credentials once postgres is declared', () => {
+            process.env.DB_DRIVER = 'postgres';
+            process.env.DATABASE_URL = 'postgres://user:pass@host:5432/pollo';
+            delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+            delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+            delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+            expect(() => validateEnvVars()).not.toThrow();
+        });
     });
 });
