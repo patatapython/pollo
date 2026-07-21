@@ -8,7 +8,7 @@ interface LogContext {
   [key: string]: unknown;
 }
 
-/** Anything longer than this is a payload, not a diagnostic. */
+/** Más largo que esto ya no es un diagnóstico, es una carga útil. */
 const MAX_VALUE_LENGTH = 200;
 
 function truncate(value: string): string {
@@ -16,19 +16,19 @@ function truncate(value: string): string {
 }
 
 /**
- * Reduces an error to the fields that identify a failure without carrying data.
+ * Reduce un error a los campos que identifican el fallo sin arrastrar datos.
  *
- * `code`, `name` and `message` are written by the database driver or the
- * runtime; they name the failure ("23505", "duplicate key value violates unique
- * constraint \"workspaces_passphrase_lookup_key\""). PostgREST's `details` and
- * `hint` are deliberately excluded: those are the fields that echo the offending
- * row values back.
+ * `code`, `name` y `message` los escribe el driver de base de datos o el
+ * runtime: nombran el fallo ("23505", "duplicate key value violates unique
+ * constraint"). `details` y `hint` de PostgREST quedan fuera a propósito: son
+ * justo los campos que devuelven los valores de la fila infractora.
  */
 /**
- * Error types whose `message` quotes the input back. `JSON.parse` on a body
- * that is not JSON yields `Unexpected token 'a', "absorcion "... is not valid
- * JSON` — ten characters of the request body, which on the access endpoint is
- * the first word of a passphrase. The name alone identifies the failure.
+ * Tipos de error cuyo `message` devuelve la entrada citada. `JSON.parse` sobre
+ * un cuerpo que no es JSON produce `Unexpected token 'a', "absorcion "... is
+ * not valid JSON`: diez caracteres del cuerpo de la petición, que en la ruta de
+ * acceso son la primera palabra de una passphrase. El nombre solo ya identifica
+ * el fallo.
  */
 const ECHOES_INPUT = new Set(['SyntaxError']);
 
@@ -54,9 +54,10 @@ export function redactError(error: unknown): unknown {
 }
 
 /**
- * Keeps primitive context values — every call site passes route metadata such
- * as `{ endpoint, method }`, which is the whole diagnostic value — and replaces
- * anything structured with its type, since an object is where a payload hides.
+ * Conserva los valores primitivos del contexto —todos los sitios que llaman
+ * pasan metadatos de ruta como `{ endpoint, method }`, que son todo el valor
+ * diagnóstico— y sustituye lo estructurado por su tipo, porque es dentro de un
+ * objeto donde se esconde una carga útil.
  */
 export function redactContext(context?: LogContext): LogContext | undefined {
   if (!context) return undefined;

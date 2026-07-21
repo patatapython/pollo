@@ -104,8 +104,12 @@ export async function verify(passphrase: string, hash: string): Promise<boolean>
 }
 
 /**
- * Repair key: lowercase + strip combining diacritics (NFD).
+ * Clave de reparación: minúsculas + eliminar diacríticos combinantes (NFD).
  * "Año" -> "ano", "José" -> "jose", "vergüenza" -> "verguenza".
+ *
+ * Normaliza a propósito, y eso NO viola la prohibición de normalizar la
+ * passphrase: sirve solo para indexar el diccionario y su salida nunca llega a
+ * hash/verify/computeLookup. Lee docs/auth-invariants.md antes de tocarla.
  */
 export function repairKey(word: string): string {
   return word
@@ -117,8 +121,8 @@ export function repairKey(word: string): string {
 let repairMap: Map<string, string[]> | null = null;
 
 /**
- * Lazily builds and caches, for the process lifetime, a map from repair-key
- * to the dictionary words that share it (see `repairKey`).
+ * Construye bajo demanda, y cachea durante toda la vida del proceso, un mapa
+ * de clave de reparación a las palabras del diccionario que la comparten.
  */
 function getRepairMap(): Map<string, string[]> {
   if (!repairMap) {
@@ -136,24 +140,25 @@ function getRepairMap(): Map<string, string[]> {
   return repairMap;
 }
 
-// Caps how many candidate phrases are HMAC-looked-up and bcrypt-verified per
-// request, bounding work per call; real passphrases need far fewer since only
-// ~18 dictionary keys have collisions, all 2-way.
+// Limita cuántas frases candidatas se buscan por HMAC y se verifican con
+// bcrypt en cada petición, acotando el trabajo por llamada. Una passphrase
+// real necesita muchas menos: solo ~18 claves del diccionario colisionan, y
+// todas de dos en dos.
 const MAX_CANDIDATES = 64;
 
 /**
- * Given typed input, return every plausible original passphrase:
- * per word, the dictionary entries sharing its repair key (or the word
- * as typed when the key is unknown). The as-typed phrase is always
- * included first, so current behavior is preserved as a subset.
- * Bounded: at most MAX_CANDIDATES results.
+ * Dada la entrada tecleada, devuelve toda passphrase original plausible: por
+ * cada palabra, las entradas del diccionario que comparten su clave de
+ * reparación (o la palabra tal cual si la clave es desconocida). La frase tal
+ * como se tecleó es siempre la primera, así que el comportamiento anterior se
+ * conserva como subconjunto. Acotado a MAX_CANDIDATES resultados.
  */
 export function candidatePassphrases(input: string): string[] {
   const typed = input.trim().replace(/\s+/g, ' ');
   const words = typed.split(' ');
 
-  // Defensive bound: never recurse on pathological input, even if a future
-  // caller skips PassphraseSchema. Real passphrases are <= 12 tokens.
+  // Cota defensiva: nunca recursar sobre entrada patológica, ni siquiera si un
+  // futuro llamante se salta PassphraseSchema. Una passphrase real tiene <= 12.
   if (words.length > 12) return [typed];
 
   const map = getRepairMap();

@@ -45,7 +45,7 @@ describe('schemas', () => {
 
     // The two upper bounds below are the only thing keeping attacker-controlled
     // input from reaching candidate expansion unbounded. They are load-bearing,
-    // not stylistic: see the auth invariants in CLAUDE.md.
+    // not stylistic: see docs/auth-invariants.md.
     it('should accept a passphrase of exactly 200 characters', () => {
       const valid = ['a'.repeat(50), 'a'.repeat(49), 'a'.repeat(49), 'a'.repeat(49)].join(' ');
       expect(valid).toHaveLength(200);

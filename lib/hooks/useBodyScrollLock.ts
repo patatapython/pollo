@@ -3,19 +3,20 @@
 import { useEffect } from 'react';
 
 /**
- * Body scroll lock, shared by every modal in the app.
+ * Bloqueo del scroll del body, compartido por todos los modales de la app.
  *
- * Two things this solves that a per-component `overflow: hidden` cannot:
+ * Resuelve dos cosas que un `overflow: hidden` por componente no puede:
  *
- * 1. `overflow: hidden` on `body` does not lock scrolling on iOS Safari. The
- *    technique that does is `position: fixed` with the scroll offset held in
- *    `top` and restored on release.
- * 2. Two modals open at once each captured and restored their own copy of the
- *    previous style, so closing the first unlocked the page underneath the
- *    second. A single shared counter means only the last release restores.
+ * 1. `overflow: hidden` sobre `body` no bloquea el scroll en iOS Safari. La
+ *    técnica que sí funciona es `position: fixed`, guardando el desplazamiento
+ *    en `top` y restaurándolo al soltar.
+ * 2. Con dos modales abiertos, cada uno capturaba y restauraba su propia copia
+ *    del estilo previo, así que cerrar el primero desbloqueaba la página por
+ *    debajo del segundo. Un único contador compartido hace que solo restaure
+ *    el último en soltar.
  *
- * The DOM logic lives in a plain function rather than inside the hook so it can
- * be tested without a React renderer.
+ * La lógica de DOM vive en una función normal en vez de dentro del hook para
+ * poder probarla sin un renderizador de React.
  */
 
 interface SavedStyle {
@@ -32,10 +33,11 @@ let saved: SavedStyle | null = null;
 let savedScrollY = 0;
 
 /**
- * Locks page scrolling and returns the matching release function.
- * Calls nest: the page unlocks only when every acquired lock is released.
- * Each returned release is idempotent, so a double call cannot unbalance the
- * counter (React Strict Mode re-runs effects).
+ * Bloquea el scroll de la página y devuelve la función que lo suelta.
+ * Las llamadas se anidan: la página se desbloquea solo cuando se ha soltado
+ * cada bloqueo adquirido. Cada función de soltar es idempotente, así que una
+ * llamada doble no puede descuadrar el contador (React Strict Mode reejecuta
+ * los efectos).
  */
 export function acquireBodyScrollLock(): () => void {
   lockCount += 1;
@@ -70,15 +72,15 @@ export function acquireBodyScrollLock(): () => void {
 
     Object.assign(document.body.style, saved);
     saved = null;
-    // `position: fixed` scrolled the document to the top; put it back.
+    // `position: fixed` llevó el documento arriba del todo; devuélvelo.
     window.scrollTo(0, savedScrollY);
   };
 }
 
 /**
- * Drops every outstanding lock and forgets the saved style.
- * For tests only: the counter outlives an individual test, so a failed
- * assertion before its release would otherwise corrupt the ones after it.
+ * Suelta todo bloqueo pendiente y olvida el estilo guardado.
+ * Solo para tests: el contador sobrevive a un test individual, así que una
+ * aserción fallida antes de soltarlo corrompería los siguientes.
  */
 export function resetBodyScrollLock(): void {
   lockCount = 0;
@@ -86,7 +88,7 @@ export function resetBodyScrollLock(): void {
   savedScrollY = 0;
 }
 
-/** Locks page scrolling for as long as `isLocked` is true. */
+/** Bloquea el scroll de la página mientras `isLocked` sea cierto. */
 export function useBodyScrollLock(isLocked: boolean): void {
   useEffect(() => {
     if (!isLocked) return;

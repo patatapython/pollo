@@ -82,8 +82,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (!matched) {
-      // Log failed attempt
-      await supabase
+      // Si este insert falla en silencio, el limitador deja de contar sin que
+      // nadie se entere: justo durante la degradación en que más importa.
+      const { error: attemptError } = await supabase
         .from('rate_limit_attempts')
         .insert({
           ip_address: clientIp,
@@ -91,20 +92,32 @@ export async function POST(request: NextRequest) {
           attempted_at: now.toISOString(),
         });
 
+      if (attemptError) {
+        logger.error('Failed attempt not recorded', attemptError, {
+          endpoint: '/api/workspaces/access',
+        });
+      }
+
       return NextResponse.json(
         { error: 'Invalid passphrase' },
         { status: 401 }
       );
     }
 
-    // Log successful attempt
-    await supabase
+    // Registrar intento correcto
+    const { error: successAttemptError } = await supabase
       .from('rate_limit_attempts')
       .insert({
         ip_address: clientIp,
         success: true,
         attempted_at: now.toISOString(),
       });
+
+    if (successAttemptError) {
+      logger.error('Successful attempt not recorded', successAttemptError, {
+        endpoint: '/api/workspaces/access',
+      });
+    }
 
     // Crear sesión JWT y setear cookie
     await createSession(matched.id);

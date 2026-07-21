@@ -20,6 +20,7 @@ vi.mock('@/lib/auth/session', () => ({
 
 import { getAdminClient } from '@/lib/supabase/admin';
 import { createSession } from '@/lib/auth/session';
+import { logger } from '@/lib/logger';
 
 /**
  * The passphrase a workspace was created with. All five are real dictionary
@@ -35,19 +36,35 @@ const WORKSPACE_ID = '11111111-2222-3333-4444-555555555555';
 
 type QueryResult = { data?: unknown; count?: number | null; error?: unknown };
 
+/**
+ * Every PostgREST builder method the route calls must be listed here. A test
+ * that exercises a new one (`.order()`, `.limit()`, ...) has to add its name
+ * first, or the stub throws `undefined is not a function` from inside the route
+ * rather than failing on the assertion.
+ */
 const BUILDER_METHODS = ['select', 'eq', 'gt', 'lt', 'in', 'insert', 'single'] as const;
 
 type MockBuilder = Record<(typeof BUILDER_METHODS)[number], ReturnType<typeof vi.fn>> & {
   then: (resolve: (value: QueryResult) => unknown) => unknown;
 };
 
-/** Chainable, awaitable stand-in for a PostgREST query builder. */
-function makeBuilder(result: QueryResult): MockBuilder {
+/**
+ * Chainable, awaitable stand-in for a PostgREST query builder.
+ * `insertResult` lets a table answer differently to `.insert()` than to a
+ * read, which is what separates "the rate-limit query failed" from "recording
+ * the attempt failed".
+ */
+function makeBuilder(result: QueryResult, insertResult?: QueryResult): MockBuilder {
   const builder = {} as MockBuilder;
   for (const method of BUILDER_METHODS) {
     builder[method] = vi.fn(() => builder);
   }
   builder.then = (resolve: (value: QueryResult) => unknown) => resolve(result);
+
+  if (insertResult) {
+    const inserted = { then: (r: (v: QueryResult) => unknown) => r(insertResult) };
+    builder.insert = vi.fn(() => inserted as unknown as MockBuilder);
+  }
   return builder;
 }
 
@@ -208,6 +225,22 @@ describe('/api/workspaces/access', () => {
       const res = await POST(buildRequest(ORIGINAL));
 
       expect(res.status).toBe(500);
+    });
+
+    it('logs a failure to record the attempt instead of discarding it', async () => {
+      // If this insert fails silently the limiter stops counting and nothing
+      // says so -- during exactly the degradation where it matters most.
+      rateLimit = makeBuilder({ count: 0, error: null }, { error: { message: 'boom' } });
+      seedWorkspace(false);
+
+      const res = await POST(buildRequest(ORIGINAL));
+
+      expect(res.status).toBe(401);
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed attempt not recorded',
+        expect.objectContaining({ message: 'boom' }),
+        expect.anything()
+      );
     });
 
     // A degraded database must never be charged to the caller: an infrastructure
