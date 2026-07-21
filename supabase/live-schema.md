@@ -51,23 +51,44 @@ invite_codes          id uuid PK, list_id uuid NOT NULL FK->lists.id,
                       used_at timestamptz, created_at timestamptz
 ```
 
-## What this capture does NOT establish
+## The full DDL
 
-PostgREST reports columns, types, nullability and key relationships. It says
-nothing about defaults, indexes, unique constraints, triggers, functions or
-publications. `passphrase_lookup` being `UNIQUE` — which the access endpoint
-relies on to guarantee at most one bcrypt verification per candidate — is
-therefore still unconfirmed against the live database.
+`supabase/live-schema.sql` holds the real `pg_dump --schema-only` of the
+`public` schema, taken the same day. That file, not this one and not
+`schema.sql`, is what the VPS database should be built from. Supabase's own
+internal schemas (`auth`, `storage`, `realtime`, `vault`, `graphql`,
+`extensions`, `pgbouncer`) are excluded: they do not migrate.
 
-**Before migrating data to the VPS, take a real `pg_dump --schema-only`.** That
-needs the database password from the Supabase dashboard (Settings → Database),
-which is not in `.env.local`:
+Regenerate it with the database password from the dashboard
+(Settings → Database), passed as `PGPASSWORD` rather than embedded in a URL:
 
 ```
-pg_dump --schema-only --no-owner \
-  "postgresql://postgres:<password>@db.kokyxlixfrtcckzbhypn.supabase.co:5432/postgres" \
-  > supabase/live-schema.sql
+PGPASSWORD=... pg_dump --schema-only --no-owner --no-privileges --schema=public \
+  -h db.kokyxlixfrtcckzbhypn.supabase.co -U postgres -d postgres
 ```
+
+### What the full dump added
+
+`passphrase_lookup` **is** `UNIQUE` (`workspaces_passphrase_lookup_key`). The
+access endpoint relies on this to guarantee at most one bcrypt verification per
+candidate; it is now confirmed rather than assumed.
+
+Indexes diverge further than the columns did. `schema.sql` declares five; the
+database has twelve:
+
+| Index | Status |
+|---|---|
+| `idx_rate_limit_ip_time` | **declared but does not exist** |
+| `idx_rate_limit_ip_success` on `(ip_address, success, attempted_at)` | exists, undeclared — and it matches the access endpoint's actual query, which the declared one did not |
+| `idx_rate_limit_attempted_at` | exists, undeclared |
+| `idx_lists_workspace_position` | exists, undeclared |
+| `idx_workspaces_tier` | exists, undeclared — indexes a dead column |
+| `idx_premium_codes_code`, `idx_invite_codes_*` (3) | exist, undeclared — indexes on dead tables |
+| `idx_workspaces_lookup` | exists, but **redundant**: the `UNIQUE` constraint already maintains an index on that column, so every write pays for two |
+
+Triggers and functions match `schema.sql`, with one extra:
+`update_subitems_updated_at`, a function for a `subitems` table that does not
+exist. Dead code inside the database.
 
 ## Related finding: validation for columns that do not exist
 
