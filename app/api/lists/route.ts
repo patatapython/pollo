@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/auth/session";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
-import { getAdminClient } from "@/lib/supabase/admin";
+import { getRepositories, ListWithItems, RepositoryError } from "@/lib/repositories";
 const CreateListSchema = z.object({
   name: z
     .string()
@@ -28,55 +28,31 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
     const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0);
 
-    const supabase = getAdminClient();
-
     // Obtener listas e items en una sola consulta con paginación
-    const { data: rawLists, error, count } = await supabase
-      .from("lists")
-      .select(
-        `
-        *,
-        items (
-          id,
-          name,
-          is_completed,
-          position,
-          created_at
-        )
-      `,
-        { count: 'exact' }
-      )
-      .eq("workspace_id", session.workspaceId)
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: true })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      logger.error("Error fetching lists", error, { endpoint: "/api/lists", method: "GET" });
-      return NextResponse.json(
-        { error: "Failed to fetch lists" },
-        { status: 500 },
+    let rawLists: ListWithItems[];
+    let count: number;
+    try {
+      const result = await getRepositories().lists.findByWorkspace(
+        session.workspaceId,
+        { limit, offset },
       );
+      rawLists = result.lists;
+      count = result.total;
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        logger.error("Error fetching lists", error.cause ?? error, { endpoint: "/api/lists", method: "GET" });
+        return NextResponse.json(
+          { error: "Failed to fetch lists" },
+          { status: 500 },
+        );
+      }
+      throw error;
     }
 
     // Procesar datos en memoria (mucho más rápido que N llamadas a la BD)
-    // Definimos el tipo para los items
-    type ItemType = {
-        id: string;
-        name: string;
-        is_completed: boolean;
-        position: number;
-        created_at: string;
-    };
-
-    interface RawList {
-      items: ItemType[];
-      [key: string]: unknown;
-    }
-
-    const listsWithCounts = ((rawLists || []) as RawList[]).map((list) => {
+    const listsWithCounts = rawLists.map((list) => {
       // Ordenar items (position asc, created_at asc)
-      const typedItems = (list.items || []) as ItemType[];
+      const typedItems = list.items || [];
       const sortedItems = typedItems.sort((a, b) => {
         if (a.position !== b.position) return a.position - b.position;
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -103,7 +79,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       lists: listsWithCounts,
       meta: {
-        total: count || 0,
+        total: count,
         limit,
         offset,
       },
@@ -134,25 +110,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = CreateListSchema.parse(body);
 
-    const supabase = getAdminClient();
-
     // Crear lista
-    const { data: list, error } = await supabase
-      .from("lists")
-      .insert({
-        workspace_id: session.workspaceId,
-        name: validatedData.name,
-        position: 0,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      logger.error("Error creating list", error, { endpoint: "/api/lists", method: "POST" });
-      return NextResponse.json(
-        { error: "Failed to create list" },
-        { status: 500 },
+    let list;
+    try {
+      list = await getRepositories().lists.create(
+        session.workspaceId,
+        validatedData.name,
+        0,
       );
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        logger.error("Error creating list", error.cause ?? error, { endpoint: "/api/lists", method: "POST" });
+        return NextResponse.json(
+          { error: "Failed to create list" },
+          { status: 500 },
+        );
+      }
+      throw error;
     }
 
     return NextResponse.json(

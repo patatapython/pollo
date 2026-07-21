@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generate, hash, computeLookup } from '@/lib/auth/passphrase';
 import { createSession } from '@/lib/auth/session';
 import { logger } from '@/lib/logger';
-import { getAdminClient } from '@/lib/supabase/admin';
+import { getRepositories, RepositoryError } from '@/lib/repositories';
 
 /**
  * POST /api/workspaces
@@ -25,58 +25,42 @@ export async function POST(request: NextRequest) {
     } catch { /* body vacío o inválido — usar default */ }
 
     // Crear workspace en DB
-    const supabase = getAdminClient();
+    const repositories = getRepositories();
 
-    const { data, error } = await supabase
-      .from('workspaces')
-      .insert({
-        passphrase_hash: passphraseHash,
-        passphrase_lookup: passphraseLookup,
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      logger.error('Failed to create workspace', error, { endpoint: '/api/workspaces' });
-      return NextResponse.json(
-        { error: 'Failed to create workspace' },
-        { status: 500 }
-      );
+    let workspaceId: string;
+    try {
+      workspaceId = await repositories.workspaces.create(passphraseHash, passphraseLookup);
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        logger.error('Failed to create workspace', error.cause ?? error, { endpoint: '/api/workspaces' });
+        return NextResponse.json(
+          { error: 'Failed to create workspace' },
+          { status: 500 }
+        );
+      }
+      throw error;
     }
-
-    const workspaceId = data.id;
 
     // Crear lista de ejemplo con items según idioma
     const exampleData = language === 'en'
       ? { listName: 'groceries', items: ['Milk', 'Bread', 'Fruits', 'Vegetables', 'Eggs', 'Cheese'] }
       : { listName: 'super', items: ['Leche', 'Pan', 'Frutas', 'Verduras', 'Huevos', 'Queso'] };
 
-    const { data: listData, error: listError } = await supabase
-      .from('lists')
-      .insert({
-        workspace_id: workspaceId,
-        name: exampleData.listName,
-        position: 0,
-      })
-      .select('id')
-      .single();
-
-    if (listError) {
-      logger.warn('Failed to create example list', { error: listError });
+    let exampleListId: string | null = null;
+    try {
+      exampleListId = (await repositories.lists.create(workspaceId, exampleData.listName, 0)).id;
+    } catch (error) {
+      if (!(error instanceof RepositoryError)) throw error;
+      logger.warn('Failed to create example list', { error: error.cause ?? error });
       // No es crítico si falla, continuamos
-    } else if (listData) {
-      const exampleItems = exampleData.items.map((name, position) => ({
-        list_id: listData.id,
-        name,
-        position,
-      }));
+    }
 
-      const { error: itemsError } = await supabase
-        .from('items')
-        .insert(exampleItems);
-
-      if (itemsError) {
-        logger.warn('Failed to create example items', { error: itemsError });
+    if (exampleListId) {
+      try {
+        await repositories.items.createMany(exampleListId, exampleData.items);
+      } catch (error) {
+        if (!(error instanceof RepositoryError)) throw error;
+        logger.warn('Failed to create example items', { error: error.cause ?? error });
         // No es crítico si falla
       }
     }

@@ -2,7 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth/session';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
-import { getAdminClient } from '@/lib/supabase/admin';
+import { getRepositories, RepositoryError } from '@/lib/repositories';
+
+/**
+ * `true` si la lista existe y es de este espacio.
+ *
+ * Un fallo de consulta cuenta como "no existe", igual que antes: el codigo
+ * anterior escribia `if (listError || !list || ajena)` y respondia 404 en los
+ * tres casos. Se conserva lo observable.
+ */
+async function listBelongsToWorkspace(id: string, workspaceId: string): Promise<boolean> {
+  try {
+    return (await getRepositories().lists.findById(id, workspaceId)) !== null;
+  } catch (error) {
+    if (error instanceof RepositoryError) return false;
+    throw error;
+  }
+}
+
 const CreateItemSchema = z.object({
   name: z
     .string()
@@ -32,16 +49,8 @@ export async function GET(
 
     const { id } = await params;
 
-    const supabase = getAdminClient();
-
     // Verificar que la lista pertenece al workspace
-    const { data: list, error: listError } = await supabase
-      .from('lists')
-      .select('id, workspace_id')
-      .eq('id', id)
-      .single();
-
-    if (listError || !list || list.workspace_id !== session.workspaceId) {
+    if (!(await listBelongsToWorkspace(id, session.workspaceId))) {
       return NextResponse.json(
         { error: 'List not found' },
         { status: 404 }
@@ -49,22 +58,21 @@ export async function GET(
     }
 
     // Obtener items
-    const { data: items, error } = await supabase
-      .from('items')
-      .select('*')
-      .eq('list_id', id)
-      .order('is_completed', { ascending: true })
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      logger.error('Error fetching items', error, { endpoint: '/api/lists/[id]/items', method: 'GET' });
-      return NextResponse.json(
-        { error: 'Failed to fetch items' },
-        { status: 500 }
-      );
+    let items;
+    try {
+      items = await getRepositories().items.findByList(id);
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        logger.error('Error fetching items', error.cause ?? error, { endpoint: '/api/lists/[id]/items', method: 'GET' });
+        return NextResponse.json(
+          { error: 'Failed to fetch items' },
+          { status: 500 }
+        );
+      }
+      throw error;
     }
 
-    return NextResponse.json({ items: items || [] });
+    return NextResponse.json({ items });
   } catch (error) {
     logger.error('Error getting items', error, { endpoint: '/api/lists/[id]/items', method: 'GET' });
     return NextResponse.json(
@@ -98,16 +106,8 @@ export async function POST(
     const body = await request.json();
     const validatedData = CreateItemSchema.parse(body);
 
-    const supabase = getAdminClient();
-
     // Verificar que la lista pertenece al workspace
-    const { data: list, error: listError } = await supabase
-      .from('lists')
-      .select('id, workspace_id')
-      .eq('id', id)
-      .single();
-
-    if (listError || !list || list.workspace_id !== session.workspaceId) {
+    if (!(await listBelongsToWorkspace(id, session.workspaceId))) {
       return NextResponse.json(
         { error: 'List not found' },
         { status: 404 }
@@ -115,23 +115,21 @@ export async function POST(
     }
 
     // Crear item
-    const { data: item, error } = await supabase
-      .from('items')
-      .insert({
-        list_id: id,
+    let item;
+    try {
+      item = await getRepositories().items.create(id, {
         name: validatedData.name,
-        is_completed: false,
         position: 0,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('Error creating item', error, { endpoint: '/api/lists/[id]/items', method: 'POST' });
-      return NextResponse.json(
-        { error: 'Failed to create item' },
-        { status: 500 }
-      );
+      });
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        logger.error('Error creating item', error.cause ?? error, { endpoint: '/api/lists/[id]/items', method: 'POST' });
+        return NextResponse.json(
+          { error: 'Failed to create item' },
+          { status: 500 }
+        );
+      }
+      throw error;
     }
 
     return NextResponse.json({ item }, { status: 201 });

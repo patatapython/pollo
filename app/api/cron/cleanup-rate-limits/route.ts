@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/supabase/admin';
+import { getRepositories, RepositoryError } from '@/lib/repositories';
 import { logger } from '@/lib/logger';
 
 /**
@@ -27,20 +27,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = getAdminClient();
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const { error, count } = await supabase
-      .from('rate_limit_attempts')
-      .delete({ count: 'exact' })
-      .lt('attempted_at', sevenDaysAgo.toISOString());
-
-    if (error) {
-      logger.error('Failed to cleanup rate limits', error);
-      return NextResponse.json(
-        { error: 'Cleanup failed' },
-        { status: 500 }
-      );
+    let count: number;
+    try {
+      count = await getRepositories().rateLimits.deleteOlderThan(sevenDaysAgo);
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        logger.error('Failed to cleanup rate limits', error.cause ?? error);
+        return NextResponse.json(
+          { error: 'Cleanup failed' },
+          { status: 500 }
+        );
+      }
+      throw error;
     }
 
     logger.info('Rate limit cleanup completed', { deletedRows: count });

@@ -2,7 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth/session';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
-import { getAdminClient } from '@/lib/supabase/admin';
+import { getRepositories, List, RepositoryError } from '@/lib/repositories';
+
+/**
+ * Busca la lista sin acotarla al espacio: estas rutas distinguen "no existe"
+ * (404) de "existe pero es de otro espacio" (403), y para eso necesitan ver el
+ * `workspace_id` real.
+ *
+ * Un fallo de consulta se devuelve como `null`, igual que una lista ausente.
+ * No es un descuido: el codigo anterior hacia `if (error || !list)` y
+ * respondia 404 en ambos casos, y este refactor no cambia lo observable.
+ */
+async function findListForRoute(id: string): Promise<List | null> {
+  try {
+    return await getRepositories().lists.findById(id);
+  } catch (error) {
+    if (error instanceof RepositoryError) return null;
+    throw error;
+  }
+}
 
 const UpdateListSchema = z.object({
   name: z
@@ -33,16 +51,10 @@ export async function GET(
 
     const { id } = await params;
 
-    const supabase = getAdminClient();
-
     // Obtener lista y verificar que pertenece al workspace
-    const { data: list, error } = await supabase
-      .from('lists')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const list = await findListForRoute(id);
 
-    if (error || !list) {
+    if (!list) {
       return NextResponse.json(
         { error: 'List not found' },
         { status: 404 }
@@ -90,16 +102,10 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = UpdateListSchema.parse(body);
 
-    const supabase = getAdminClient();
-
     // Verificar que la lista pertenece al workspace
-    const { data: list, error: checkError } = await supabase
-      .from('lists')
-      .select('id, workspace_id')
-      .eq('id', id)
-      .single();
+    const list = await findListForRoute(id);
 
-    if (checkError || !list) {
+    if (!list) {
       return NextResponse.json(
         { error: 'List not found' },
         { status: 404 }
@@ -114,15 +120,29 @@ export async function PATCH(
     }
 
     // Actualizar lista
-    const { data: updatedList, error: updateError } = await supabase
-      .from('lists')
-      .update({ name: validatedData.name })
-      .eq('id', id)
-      .select()
-      .single();
+    let updatedList: List | null;
+    try {
+      updatedList = await getRepositories().lists.update(
+        id,
+        session.workspaceId,
+        validatedData.name
+      );
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        logger.error('Error updating list', error.cause ?? error, { endpoint: '/api/lists/[id]', method: 'PATCH' });
+        return NextResponse.json(
+          { error: 'Failed to update list' },
+          { status: 500 }
+        );
+      }
+      throw error;
+    }
 
-    if (updateError) {
-      logger.error('Error updating list', updateError, { endpoint: '/api/lists/[id]', method: 'PATCH' });
+    // La lista existia hace dos lineas: si ya no esta, alguien la borro entre
+    // medias. El codigo anterior pedia una fila exacta y respondia 500; se
+    // mantiene esa respuesta.
+    if (!updatedList) {
+      logger.error('Error updating list', new Error('List vanished before update'), { endpoint: '/api/lists/[id]', method: 'PATCH' });
       return NextResponse.json(
         { error: 'Failed to update list' },
         { status: 500 }
@@ -166,16 +186,10 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const supabase = getAdminClient();
-
     // Verificar que la lista pertenece al workspace
-    const { data: list, error: checkError } = await supabase
-      .from('lists')
-      .select('id, workspace_id')
-      .eq('id', id)
-      .single();
+    const list = await findListForRoute(id);
 
-    if (checkError || !list) {
+    if (!list) {
       return NextResponse.json(
         { error: 'List not found' },
         { status: 404 }
@@ -190,17 +204,19 @@ export async function DELETE(
     }
 
     // Eliminar lista (cascade eliminará items automáticamente)
-    const { error: deleteError } = await supabase
-      .from('lists')
-      .delete()
-      .eq('id', id);
-
-    if (deleteError) {
-      logger.error('Error deleting list', deleteError, { endpoint: '/api/lists/[id]', method: 'DELETE' });
-      return NextResponse.json(
-        { error: 'Failed to delete list' },
-        { status: 500 }
-      );
+    // Que no hubiera nada que borrar no es un fallo: el codigo anterior
+    // tampoco miraba cuantas filas cayeron.
+    try {
+      await getRepositories().lists.delete(id, session.workspaceId);
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        logger.error('Error deleting list', error.cause ?? error, { endpoint: '/api/lists/[id]', method: 'DELETE' });
+        return NextResponse.json(
+          { error: 'Failed to delete list' },
+          { status: 500 }
+        );
+      }
+      throw error;
     }
 
     return NextResponse.json({ success: true });
