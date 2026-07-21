@@ -34,6 +34,16 @@ export function ConfirmModal({
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen, onCancel]);
 
+  // Lock body scroll while the modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -45,14 +55,14 @@ export function ConfirmModal({
       />
 
       {/* Modal */}
-      <div role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" className="relative w-full max-w-sm bg-retro-cream-50 border-4 border-retro-brown-700 rounded-[25px] shadow-[8px_8px_0px_rgba(0,0,0,0.25)] p-6 flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-150">
+      <div role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" className="relative w-full max-w-sm bg-retro-cream-50 border-4 border-retro-brown-700 rounded-[25px] shadow-[8px_8px_0px_rgba(0,0,0,0.25)] p-6 flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-150 max-h-[85vh] overflow-y-auto overscroll-contain">
         {/* Título */}
         <h2 id="confirm-modal-title" className="text-lg font-bold text-retro-brown-800 uppercase tracking-wide">
           {title}
         </h2>
 
         {/* Mensaje */}
-        <p className="text-sm text-retro-brown-600 leading-relaxed">
+        <p className="text-sm text-retro-brown-600 leading-relaxed break-words">
           {message}
         </p>
 
