@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Those are full checkouts of this repo; linting them multiplies every
+    // pre-existing problem by the number of copies present.
+    ".claude/**",
   ]),
 ]);
 

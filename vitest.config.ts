@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, configDefaults } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
@@ -11,5 +11,8 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: [],
+    // An ignored local directory holds full checkouts of this repo. Without
+    // this, their tests resolve `@` to the root source instead of their own.
+    exclude: [...configDefaults.exclude, '**/.claude/**'],
   },
 });
