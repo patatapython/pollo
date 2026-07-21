@@ -21,6 +21,10 @@
 --   funcion update_subitems_updated_at    para una tabla subitems inexistente
 --   politicas RLS                         la base no se expone a internet; el
 --                                         unico acceso es la propia aplicacion
+--   funcion cleanup_old_attempts          no existe en la base viva: venia del
+--                                         antiguo schema.sql, sin llamantes, y
+--                                         con ventana de 24h cuando el cron que
+--                                         si limpia usa 7 dias
 --
 -- CAMBIO DE TIPO QUE EXIGE TOCAR LA APLICACION: ip_address pasa de
 -- character varying(45) a inet. Ver la nota al final del fichero.
@@ -100,12 +104,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION cleanup_old_attempts() RETURNS void AS $$
-BEGIN
-  DELETE FROM rate_limit_attempts WHERE attempted_at < now() - INTERVAL '24 hours';
-END;
-$$ LANGUAGE plpgsql;
-
 CREATE TRIGGER workspaces_updated_at BEFORE UPDATE ON workspaces
   FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 
@@ -127,15 +125,26 @@ COMMIT;
 --
 --     const clientIp = request.headers.get('x-forwarded-for') || 'unknown';
 --
--- Contra INET eso falla por dos motivos, y ambos son defectos ya existentes que
--- la columna de texto se limitaba a ocultar:
+-- Contra INET eso falla por tres motivos. Los dos primeros son defectos ya
+-- existentes que la columna de texto se limitaba a ocultar; el tercero es una
+-- trampa del arreglo mismo:
 --
---   1. 'unknown' no es una direccion. Debe guardarse NULL.
+--   1. 'unknown' no es una direccion. Antes de escribirla, la LECTURA ya
+--      revienta: countFailedSince hace .eq('ip_address', 'unknown') y Postgres
+--      responde 22P02. Esa rama devuelve 500 antes de autenticar a nadie, asi
+--      que no es un limitador degradado: es una caida completa del login para
+--      toda peticion sin x-forwarded-for. Hay que guardar NULL.
 --   2. x-forwarded-for puede traer una lista ("cliente, proxy1, proxy2"). Hoy
 --      se guarda entera, asi que dos peticiones del mismo cliente por rutas
 --      distintas cuentan como IPs distintas y el limitador se puede esquivar.
 --      Hay que quedarse con la primera entrada y validarla.
+--   3. Guardar NULL no basta. `.eq(columna, null)` genera `columna = NULL`, que
+--      en SQL nunca es cierto, asi que countFailedSince devolveria 0 para
+--      siempre en ese camino: intentos ilimitados y ningun 429, en silencio.
+--      El repositorio tiene que usar `.is('ip_address', null)` cuando la
+--      direccion falta. Sin eso, el comentario de la columna de arriba
+--      ("todas esas peticiones comparten cubo") seria falso.
 --
--- El cambio va emparejado con este esquema: desplegar uno sin el otro rompe el
--- registro de intentos.
+-- El cambio va emparejado con este esquema: desplegar uno sin el otro tumba el
+-- login, y arreglarlo a medias apaga el limitador sin avisar.
 -- --------------------------------------------------------------------------
