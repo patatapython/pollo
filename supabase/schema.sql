@@ -1,5 +1,12 @@
 -- Schema para Pollo: Listas Compartidas Anónimas
--- Este archivo refleja el estado final después de todas las migraciones.
+--
+-- AVISO: este archivo NO refleja la base de datos en produccion. Se comprobo
+-- contra el servidor vivo el 2026-07-21 y diverge en cuatro puntos, uno de
+-- ellos capaz de tumbar el login: aqui `ip_address` es INET y en produccion es
+-- VARCHAR(45), y la ruta de acceso escribe la cadena 'unknown'.
+--
+-- NO reconstruyas ninguna base a partir de este archivo. Lee primero
+-- supabase/live-schema.md, y regenera la verdad con `node supabase/live-schema.mjs`.
 
 -- ============================================
 -- Tablas
