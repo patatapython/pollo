@@ -111,6 +111,28 @@ describe('/api/workspaces/access', () => {
       await expect(res.json()).resolves.toHaveProperty('error');
       expect(res.status).not.toBe(500);
     });
+
+    // The two bounds below exist so oversized input can never reach candidate
+    // expansion. Rejecting before any query is the property that matters.
+    it('returns 400 for a passphrase longer than 200 characters', async () => {
+      const tooLong = ['a'.repeat(51), 'a'.repeat(49), 'a'.repeat(49), 'a'.repeat(49)].join(' ');
+
+      const res = await POST(buildRequest(tooLong));
+
+      expect(res.status).toBe(400);
+      expect(workspaces.in).not.toHaveBeenCalled();
+      expect(rateLimit.insert).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 for a passphrase with more than 12 words', async () => {
+      const tooManyWords = Array.from({ length: 13 }, () => 'mesa').join(' ');
+
+      const res = await POST(buildRequest(tooManyWords));
+
+      expect(res.status).toBe(400);
+      expect(workspaces.in).not.toHaveBeenCalled();
+      expect(rateLimit.insert).not.toHaveBeenCalled();
+    });
   });
 
   describe('authentication', () => {
