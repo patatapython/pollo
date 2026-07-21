@@ -204,5 +204,12 @@ describe('schemas', () => {
       const result = AccessSchema.safeParse(invalid);
       expect(result.success).toBe(false);
     });
+
+    it('should accept issued credentials containing ü and _ dictionary words', () => {
+      const result = AccessSchema.safeParse({
+        passphrase: 'algo antigüedad vergüenza al_menos casa',
+      });
+      expect(result.success).toBe(true);
+    });
   });
 });

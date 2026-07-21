@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AccessSchema } from '@/lib/validations/schemas';
-import { computeLookup, verify } from '@/lib/auth/passphrase';
+import { computeLookup, verify, candidatePassphrases } from '@/lib/auth/passphrase';
 import { createSession } from '@/lib/auth/session';
 import { logger } from '@/lib/logger';
 import { getAdminClient } from '@/lib/supabase/admin';
@@ -49,35 +49,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Buscar workspace por passphrase lookup
-    const passphraseLookup = computeLookup(validatedData.passphrase);
+    // Reparar entrada mediante candidatos del diccionario y buscar workspace
+    const candidates = candidatePassphrases(validatedData.passphrase);
+    const lookupToCandidate = new Map(
+      candidates.map((c) => [computeLookup(c), c])
+    );
 
-    const { data: workspace, error: workspaceError } = await supabase
+    const { data: workspaces, error: workspaceError } = await supabase
       .from('workspaces')
-      .select('id, passphrase_hash')
-      .eq('passphrase_lookup', passphraseLookup)
-      .single();
+      .select('id, passphrase_hash, passphrase_lookup')
+      .in('passphrase_lookup', [...lookupToCandidate.keys()]);
 
-    if (workspaceError || !workspace) {
-      // Log failed attempt
-      await supabase
-        .from('rate_limit_attempts')
-        .insert({
-          ip_address: clientIp,
-          success: false,
-          attempted_at: now.toISOString(),
-        });
-
-      return NextResponse.json(
-        { error: 'Invalid passphrase' },
-        { status: 401 }
-      );
+    let matched: { id: string } | null = null;
+    for (const ws of workspaces ?? []) {
+      const candidate = lookupToCandidate.get(ws.passphrase_lookup);
+      if (candidate && (await verify(candidate, ws.passphrase_hash))) {
+        matched = ws;
+        break;
+      }
     }
 
-    // Verificar hash bcrypt
-    const isValid = await verify(validatedData.passphrase, workspace.passphrase_hash);
+    if (workspaceError || !matched) {
+      if (workspaceError) {
+        logger.error('Workspace lookup error', workspaceError, { endpoint: '/api/workspaces/access' });
+      }
 
-    if (!isValid) {
       // Log failed attempt
       await supabase
         .from('rate_limit_attempts')
@@ -103,10 +99,10 @@ export async function POST(request: NextRequest) {
       });
 
     // Crear sesión JWT y setear cookie
-    await createSession(workspace.id);
+    await createSession(matched.id);
 
     return NextResponse.json(
-      { id: workspace.id },
+      { id: matched.id },
       { status: 200 }
     );
   } catch (error) {

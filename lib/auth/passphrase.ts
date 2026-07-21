@@ -102,3 +102,77 @@ export function computeLookup(passphrase: string): string {
 export async function verify(passphrase: string, hash: string): Promise<boolean> {
   return bcrypt.compare(passphrase, hash);
 }
+
+/**
+ * Repair key: lowercase + strip combining diacritics (NFD).
+ * "Año" -> "ano", "José" -> "jose", "vergüenza" -> "verguenza".
+ */
+export function repairKey(word: string): string {
+  return word
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+let repairMap: Map<string, string[]> | null = null;
+
+/**
+ * Lazily builds and caches, for the process lifetime, a map from repair-key
+ * to the dictionary words that share it (see `repairKey`).
+ */
+function getRepairMap(): Map<string, string[]> {
+  if (!repairMap) {
+    repairMap = new Map();
+    for (const w of WORD_LIST) {
+      const key = repairKey(w);
+      const existing = repairMap.get(key);
+      if (existing) {
+        if (!existing.includes(w)) existing.push(w);
+      } else {
+        repairMap.set(key, [w]);
+      }
+    }
+  }
+  return repairMap;
+}
+
+// Caps how many candidate phrases are HMAC-looked-up and bcrypt-verified per
+// request, bounding work per call; real passphrases need far fewer since only
+// ~18 dictionary keys have collisions, all 2-way.
+const MAX_CANDIDATES = 64;
+
+/**
+ * Given typed input, return every plausible original passphrase:
+ * per word, the dictionary entries sharing its repair key (or the word
+ * as typed when the key is unknown). The as-typed phrase is always
+ * included first, so current behavior is preserved as a subset.
+ * Bounded: at most MAX_CANDIDATES results.
+ */
+export function candidatePassphrases(input: string): string[] {
+  const typed = input.trim().replace(/\s+/g, ' ');
+  const words = typed.split(' ');
+
+  // Defensive bound: never recurse on pathological input, even if a future
+  // caller skips PassphraseSchema. Real passphrases are <= 12 tokens.
+  if (words.length > 12) return [typed];
+
+  const map = getRepairMap();
+
+  const perWord: string[][] = words.map((w) => {
+    const candidates = map.get(repairKey(w)) ?? [];
+    return candidates.length > 0 ? candidates : [w];
+  });
+
+  const phrases: string[] = [typed];
+  const build = (idx: number, acc: string[]) => {
+    if (phrases.length >= MAX_CANDIDATES) return;
+    if (idx === words.length) {
+      const phrase = acc.join(' ');
+      if (!phrases.includes(phrase)) phrases.push(phrase);
+      return;
+    }
+    for (const c of perWord[idx]) build(idx + 1, [...acc, c]);
+  };
+  build(0, []);
+  return phrases;
+}
