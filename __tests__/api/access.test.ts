@@ -209,5 +209,19 @@ describe('/api/workspaces/access', () => {
 
       expect(res.status).toBe(500);
     });
+
+    // A degraded database must never be charged to the caller: an infrastructure
+    // failure is not a wrong guess, so it costs no attempt and reveals nothing
+    // about whether the passphrase was valid.
+    it('returns 500 without recording an attempt when the workspace lookup fails', async () => {
+      workspaces = makeBuilder({ data: null, error: { message: 'boom' } });
+
+      const res = await POST(buildRequest(ORIGINAL));
+
+      expect(res.status).toBe(500);
+      await expect(res.json()).resolves.toEqual({ error: 'Internal server error' });
+      expect(rateLimit.insert).not.toHaveBeenCalled();
+      expect(createSession).not.toHaveBeenCalled();
+    });
   });
 });
