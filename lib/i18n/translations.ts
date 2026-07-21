@@ -188,7 +188,7 @@ const es = {
   'itemList.completed': 'Completados ({{count}})',
 
   // === ITEM CARD ===
-  'itemCard.doubleClickEdit': 'Doble-click para editar',
+  'itemCard.tapToEdit': 'Toca para editar',
   'itemCard.deleteTitle': 'Eliminar item',
   'itemCard.deleteMessage':
     '¿Eliminar "{{name}}"? Esta acción no se puede deshacer.',
@@ -439,7 +439,7 @@ const en: Record<keyof typeof es, string> = {
   'itemList.completed': 'Completed ({{count}})',
 
   // === ITEM CARD ===
-  'itemCard.doubleClickEdit': 'Double-click to edit',
+  'itemCard.tapToEdit': 'Tap to edit',
   'itemCard.deleteTitle': 'Delete item',
   'itemCard.deleteMessage':
     'Delete "{{name}}"? This action cannot be undone.',

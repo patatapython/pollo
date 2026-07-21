@@ -81,6 +81,7 @@ export function ItemCard({ item, onToggle, onDelete, isLoading, listId }: ItemCa
               w-7 h-7 rounded-full border-3 cursor-pointer
               transition-all duration-200
               flex items-center justify-center
+              relative after:content-[''] after:absolute after:-inset-2 after:rounded-full
               ${
                 item.is_completed
                   ? 'bg-accent-500 border-accent-600'
@@ -110,13 +111,13 @@ export function ItemCard({ item, onToggle, onDelete, isLoading, listId }: ItemCa
             />
           ) : (
             <span
-              onDoubleClick={() => !item.is_completed && setIsEditing(true)}
+              onClick={() => !item.is_completed && setIsEditing(true)}
               className={`block text-base font-medium transition-all cursor-text select-none ${
                 item.is_completed
                   ? 'line-through text-retro-brown-600'
                   : 'text-retro-brown-800 hover:bg-retro-cream-100 px-2 py-1 rounded'
               } ${isLoading ? 'opacity-50' : ''}`}
-              title={t('itemCard.doubleClickEdit')}
+              title={t('itemCard.tapToEdit')}
             >
               {item.name}
             </span>
@@ -132,7 +133,7 @@ export function ItemCard({ item, onToggle, onDelete, isLoading, listId }: ItemCa
         }}
         disabled={isLoading || isSaving}
         aria-label={t('itemCard.deleteTitle')}
-        className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-retro-red-500 border-2 border-retro-red-700 shadow-[3px_3px_0px_rgba(220,38,38,0.3)] hover:shadow-[2px_2px_0px_rgba(220,38,38,0.4)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-200 flex items-center justify-center group-hover:opacity-100 opacity-0 hover:opacity-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-retro-red-500 border-2 border-retro-red-700 shadow-[3px_3px_0px_rgba(220,38,38,0.3)] hover:shadow-[2px_2px_0px_rgba(220,38,38,0.4)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-200 flex items-center justify-center opacity-100 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:hover:opacity-100 disabled:opacity-50 disabled:cursor-not-allowed"
         title={t('itemCard.deleteTitle')}
       >
         {isLoading ? (
