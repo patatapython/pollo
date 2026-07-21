@@ -5,8 +5,8 @@ keep 137 existing workspaces able to log in. Read this before editing
 `lib/auth/passphrase.ts`, `lib/validations/schemas.ts` or
 `app/api/workspaces/access/route.ts`.
 
-This file is tracked deliberately. It previously lived only in an untracked,
-gitignored `CLAUDE.md` on one laptop, which meant the rules that stopped the
+This file is tracked deliberately. These rules previously lived only in an
+untracked note on a single laptop, which meant the reasoning that stopped the
 login path being broken travelled with nobody.
 
 ## 1. Never normalize the passphrase before hashing, verifying or looking up
