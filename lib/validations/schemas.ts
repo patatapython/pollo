@@ -3,6 +3,9 @@ import { z } from 'zod';
 /**
  * PASSPHRASE SCHEMA
  * Validación para passphrases (crear lista / acceder a lista)
+ *
+ * Los limites de abajo protegen la unica credencial del producto. Antes de
+ * relajarlos, lee docs/auth-invariants.md.
  */
 export const PassphraseSchema = z
   .string()
