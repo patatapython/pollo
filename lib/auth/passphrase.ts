@@ -111,9 +111,6 @@ export async function verify(passphrase: string, hash: string): Promise<boolean>
  * passphrase: sirve solo para indexar el diccionario y su salida nunca llega a
  * hash/verify/computeLookup. Lee docs/auth-invariants.md antes de tocarla.
  */
-// Normaliza a proposito, y eso NO viola la prohibicion de normalizar: solo
-// indexa el diccionario, su salida nunca llega a hash/verify/computeLookup.
-// Ver docs/auth-invariants.md antes de tocarla o borrarla.
 export function repairKey(word: string): string {
   return word
     .toLowerCase()
