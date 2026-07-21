@@ -133,7 +133,7 @@ export function ItemCard({ item, onToggle, onDelete, isLoading, listId }: ItemCa
         }}
         disabled={isLoading || isSaving}
         aria-label={t('itemCard.deleteTitle')}
-        className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-retro-red-500 border-2 border-retro-red-700 shadow-[3px_3px_0px_rgba(220,38,38,0.3)] hover:shadow-[2px_2px_0px_rgba(220,38,38,0.4)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-200 flex items-center justify-center opacity-100 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:hover:opacity-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="absolute -top-3 -right-3 w-11 h-11 rounded-full bg-retro-red-500 border-2 border-retro-red-700 shadow-[3px_3px_0px_rgba(220,38,38,0.3)] hover:shadow-[2px_2px_0px_rgba(220,38,38,0.4)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-200 flex items-center justify-center opacity-100 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:hover:opacity-100 disabled:opacity-50 disabled:cursor-not-allowed"
         title={t('itemCard.deleteTitle')}
       >
         {isLoading ? (
