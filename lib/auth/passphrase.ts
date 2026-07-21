@@ -107,6 +107,9 @@ export async function verify(passphrase: string, hash: string): Promise<boolean>
  * Repair key: lowercase + strip combining diacritics (NFD).
  * "Año" -> "ano", "José" -> "jose", "vergüenza" -> "verguenza".
  */
+// Normaliza a proposito, y eso NO viola la prohibicion de normalizar: solo
+// indexa el diccionario, su salida nunca llega a hash/verify/computeLookup.
+// Ver docs/auth-invariants.md antes de tocarla o borrarla.
 export function repairKey(word: string): string {
   return word
     .toLowerCase()
