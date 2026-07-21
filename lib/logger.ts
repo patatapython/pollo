@@ -32,7 +32,27 @@ function truncate(value: string): string {
  */
 const ECHOES_INPUT = new Set(['SyntaxError']);
 
+/**
+ * Cuántos niveles de `cause` se recorren.
+ *
+ * El encadenado real es de dos: un `RepositoryError` envolviendo el error de
+ * Postgres. La cota no está para ese caso, sino para el que no se controla.
+ * Dos errores que se apuntan mutuamente (`a.cause = b; b.cause = a`) hacen que
+ * el descenso no termine nunca, y el `RangeError` se lanza desde dentro de
+ * `logger.error()`: es decir, mientras ya se estaba gestionando un fallo. La
+ * redacción convertiría un incidente registrado en una excepción sin capturar.
+ *
+ * Acotar la profundidad, en vez de detectar ciclos, cierra además el otro
+ * extremo: una cadena larguísima pero sin ciclo no desborda la pila, pero sí
+ * escribiría una línea de registro de tamaño arbitrario.
+ */
+const MAX_CAUSE_DEPTH = 5;
+
 export function redactError(error: unknown): unknown {
+  return redactAtDepth(error, 0);
+}
+
+function redactAtDepth(error: unknown, depth: number): unknown {
   if (error === null || error === undefined) return undefined;
 
   if (typeof error === 'object') {
@@ -50,8 +70,8 @@ export function redactError(error: unknown): unknown {
     // Un error envuelto guarda la causa real en `cause`. Sin bajar un nivel,
     // un RepositoryError se registra como "Failed to fetch list" y se pierde
     // el codigo de Postgres, que es lo unico que dice que paso de verdad.
-    if (source.cause !== undefined && source.cause !== null) {
-      const cause = redactError(source.cause);
+    if (source.cause !== undefined && source.cause !== null && depth < MAX_CAUSE_DEPTH) {
+      const cause = redactAtDepth(source.cause, depth + 1);
       if (cause) return { ...redacted, cause } as unknown as Record<string, string>;
     }
 

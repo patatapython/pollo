@@ -76,6 +76,42 @@ describe('logger', () => {
       expect(result.cause.code).toBe('57014');
     });
 
+    it('terminates on a cause cycle instead of taking the handler down with it', () => {
+      // Descending the cause chain is unbounded, so two errors pointing at each
+      // other recurse forever. The throw lands inside logger.error(), which only
+      // ever runs while a failure is already being handled: the redaction turns
+      // one logged incident into an unhandled RangeError.
+      const outer = new Error('Failed to fetch list') as Error & { cause: unknown };
+      const inner = new Error('connection terminated') as Error & { cause: unknown };
+      outer.cause = inner;
+      inner.cause = outer;
+
+      expect(() => redactError(outer)).not.toThrow();
+      expect(JSON.stringify(redactError(outer))).toContain('connection terminated');
+    });
+
+    it('stops descending a cause chain that is merely very long', () => {
+      // Asserting "does not throw" here would be green for the wrong reason:
+      // 5000 levels do not exhaust the stack on their own. What matters is that
+      // the output is bounded, so a log line can never become a payload of
+      // arbitrary size either.
+      let deepest: Error & { cause?: unknown } = new Error('root cause');
+      for (let i = 0; i < 5000; i++) {
+        const wrapper = new Error(`layer ${i}`) as Error & { cause?: unknown };
+        wrapper.cause = deepest;
+        deepest = wrapper;
+      }
+
+      let depth = 0;
+      let node = redactError(deepest) as { cause?: unknown } | undefined;
+      while (node && typeof node === 'object' && 'cause' in node) {
+        depth++;
+        node = node.cause as { cause?: unknown } | undefined;
+      }
+
+      expect(depth).toBeLessThan(20);
+    });
+
     it('keeps a native Error identifiable', () => {
       const result = redactError(new Error('boom')) as { name: string; message: string };
 
