@@ -54,6 +54,13 @@ also dilutes the rate limiter beyond its accepted bound.
 `__tests__/lib/auth/passphrase.test.ts` asserts these premises directly. If one
 of those tests fails, a premise changed — do not relax the test.
 
+The word-count backstop of rule 5 needs its own tests, and they have to reach
+`candidatePassphrases` directly. Every other test in that file arrives through
+input `PassphraseSchema` would have accepted, so none of them ever crosses the
+bound: it was deletable with the suite fully green. Deleting it now turns a
+13-word input from one candidate into 64, and a long one into a stack
+overflow — both measured.
+
 ## Facts already verified, so they are not re-derived
 
 - The cap can never truncate a legitimate passphrase out of the candidate list:

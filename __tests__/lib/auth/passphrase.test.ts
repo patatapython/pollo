@@ -153,6 +153,43 @@ describe('passphrase', () => {
       expect(candidates.length).toBe(64);
     });
 
+    /**
+     * The word-count backstop inside candidatePassphrases exists to hold when
+     * PassphraseSchema is *not* in front of it — a future caller, a different
+     * entry point. Every existing test reaches this function through inputs the
+     * schema would have accepted, so none of them ever crossed the bound: it
+     * could be deleted and the whole suite stayed green.
+     *
+     * Both cases below use only colliding dictionary keys, so expansion would
+     * genuinely happen without the bound. Built from words with a single
+     * candidate the product is one phrase, which equals the typed one, and the
+     * test would pass either way — green for the wrong reason.
+     */
+    describe('word-count backstop, independent of PassphraseSchema', () => {
+      const COLLIDING = [
+        'ano', 'aun', 'bebe', 'campana', 'cana', 'canon', 'carne',
+        'cesar', 'mama', 'papa', 'solo', 'sonar', 'una',
+      ];
+
+      it('refuses to expand past 12 words, returning the phrase as typed', () => {
+        expect(COLLIDING.length).toBe(13);
+        const typed = COLLIDING.join(' ');
+
+        // Uncapped this is 2^13 = 8192 combinations, which MAX_CANDIDATES
+        // would clip to 64. The backstop is what makes it 1.
+        expect(candidatePassphrases(typed)).toEqual([typed]);
+      });
+
+      it('survives an input long enough to exhaust the stack without it', () => {
+        // One frame of build() per word. Deep enough to overflow, which is the
+        // failure the bound exists to prevent.
+        const typed = Array.from({ length: 20000 }, (_, i) => COLLIDING[i % 13]).join(' ');
+
+        expect(() => candidatePassphrases(typed)).not.toThrow();
+        expect(candidatePassphrases(typed)).toEqual([typed]);
+      });
+    });
+
     it('mangled generate() output always recovers the original among candidates', () => {
       for (let i = 0; i < 50; i++) {
         const p = generate();
