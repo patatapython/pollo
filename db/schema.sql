@@ -20,7 +20,13 @@
 --   idx_workspaces_tier                   indexaba una columna muerta
 --   funcion update_subitems_updated_at    para una tabla subitems inexistente
 --   politicas RLS                         la base no se expone a internet; el
---                                         unico acceso es la propia aplicacion
+--                                         unico acceso es la propia aplicacion.
+--                                         Esa premisa era falsa cuando se
+--                                         escribio: Docker publica puertos por
+--                                         delante de ufw, y el 6001 respondia
+--                                         desde internet. La hace cierta
+--                                         infra/vps/docker-user-firewall.sh.
+--                                         Ver docs/vps-network-boundary.md
 --   funcion cleanup_old_attempts          no existe en la base viva: venia del
 --                                         antiguo schema.sql, sin llamantes, y
 --                                         con ventana de 24h cuando el cron que
@@ -119,24 +125,27 @@ CREATE TRIGGER items_completed_at BEFORE UPDATE ON items
 COMMIT;
 
 -- --------------------------------------------------------------------------
--- PENDIENTE ANTES DE DESPLEGAR CONTRA ESTE ESQUEMA
+-- POR QUE ip_address ES INET Y ANULABLE   (el codigo ya esta al dia)
 --
--- app/api/workspaces/access/route.ts:24 hace hoy:
+-- La aplicacion hacia esto, y contra INET no funciona:
 --
 --     const clientIp = request.headers.get('x-forwarded-for') || 'unknown';
 --
--- Contra INET eso falla por tres motivos. Los dos primeros son defectos ya
--- existentes que la columna de texto se limitaba a ocultar; el tercero es una
--- trampa del arreglo mismo:
+-- Hoy usa parseClientIp (lib/http/client-ip.ts) y el repositorio consulta con
+-- .is() cuando la direccion falta, asi que este esquema y el codigo encajan.
+-- Se conserva el razonamiento porque explica por que la columna tiene esta
+-- forma, y porque los tres fallos son faciles de reintroducir. Los dos
+-- primeros son defectos que la columna de texto se limitaba a ocultar; el
+-- tercero es una trampa del arreglo mismo:
 --
 --   1. 'unknown' no es una direccion. Antes de escribirla, la LECTURA ya
 --      revienta: countFailedSince hace .eq('ip_address', 'unknown') y Postgres
 --      responde 22P02. Esa rama devuelve 500 antes de autenticar a nadie, asi
 --      que no es un limitador degradado: es una caida completa del login para
 --      toda peticion sin x-forwarded-for. Hay que guardar NULL.
---   2. x-forwarded-for puede traer una lista ("cliente, proxy1, proxy2"). Hoy
---      se guarda entera, asi que dos peticiones del mismo cliente por rutas
---      distintas cuentan como IPs distintas y el limitador se puede esquivar.
+--   2. x-forwarded-for puede traer una lista ("cliente, proxy1, proxy2").
+--      Guardarla entera hace que dos peticiones del mismo cliente por rutas
+--      distintas cuenten como IPs distintas y el limitador se pueda esquivar.
 --      Hay que quedarse con la primera entrada y validarla.
 --   3. Guardar NULL no basta. `.eq(columna, null)` genera `columna = NULL`, que
 --      en SQL nunca es cierto, asi que countFailedSince devolveria 0 para
@@ -145,6 +154,9 @@ COMMIT;
 --      direccion falta. Sin eso, el comentario de la columna de arriba
 --      ("todas esas peticiones comparten cubo") seria falso.
 --
--- El cambio va emparejado con este esquema: desplegar uno sin el otro tumba el
--- login, y arreglarlo a medias apaga el limitador sin avisar.
+-- El codigo va emparejado con este esquema: desplegar uno sin el otro tumba el
+-- login, y arreglarlo a medias apaga el limitador sin avisar. Por eso, si esta
+-- rama llegara a desplegarse mientras Supabase siga siendo el proveedor, hay
+-- que aplicar antes db/migrations/001_ip_address_nullable_inet.sql: alli la
+-- columna sigue siendo character varying(45) NOT NULL.
 -- --------------------------------------------------------------------------

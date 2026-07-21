@@ -1,0 +1,14 @@
+[Unit]
+Description=Default-deny policy for Docker published ports (DOCKER-USER)
+Documentation=file:/usr/local/sbin/docker-user-firewall.sh
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/docker-user-firewall.sh
+
+[Install]
+WantedBy=docker.service
