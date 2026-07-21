@@ -7,29 +7,17 @@ import { getRepositories, Item, RepositoryError } from '@/lib/repositories';
 /**
  * `true` si la lista existe y es de este espacio.
  *
- * El codigo anterior descartaba el error de esta consulta y dejaba `list` en
- * `null`, con lo que un fallo de base de datos respondia 404. Se conserva.
+ * Un fallo de consulta sube y acaba en 500. No se convierte en 404: "no
+ * encuentro tu lista" y "la base de datos no responde" son cosas distintas y
+ * al usuario hay que decirle cual de las dos es.
  */
 async function listBelongsToWorkspace(id: string, workspaceId: string): Promise<boolean> {
-  try {
-    return (await getRepositories().lists.findById(id, workspaceId)) !== null;
-  } catch (error) {
-    if (error instanceof RepositoryError) return false;
-    throw error;
-  }
+  return (await getRepositories().lists.findById(id, workspaceId)) !== null;
 }
 
-/**
- * El articulo de esa lista, o `null`. Un fallo de consulta tambien devuelve
- * `null`: antes era `if (checkError || !item || ajeno)` con un unico 404.
- */
+/** El articulo de esa lista, o `null` si no existe o es de otra lista. */
 async function findItemForRoute(itemId: string, listId: string): Promise<Item | null> {
-  try {
-    return await getRepositories().items.findById(itemId, listId);
-  } catch (error) {
-    if (error instanceof RepositoryError) return null;
-    throw error;
-  }
+  return getRepositories().items.findById(itemId, listId);
 }
 
 const UpdateItemSchema = z.object({

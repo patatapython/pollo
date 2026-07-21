@@ -47,6 +47,14 @@ export function redactError(error: unknown): unknown {
       if (typeof value === 'string' && value.length > 0) redacted[field] = truncate(value);
       else if (typeof value === 'number') redacted[field] = String(value);
     }
+    // Un error envuelto guarda la causa real en `cause`. Sin bajar un nivel,
+    // un RepositoryError se registra como "Failed to fetch list" y se pierde
+    // el codigo de Postgres, que es lo unico que dice que paso de verdad.
+    if (source.cause !== undefined && source.cause !== null) {
+      const cause = redactError(source.cause);
+      if (cause) return { ...redacted, cause } as unknown as Record<string, string>;
+    }
+
     return Object.keys(redacted).length > 0 ? redacted : { type: 'unknown error' };
   }
 

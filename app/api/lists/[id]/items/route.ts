@@ -7,17 +7,10 @@ import { getRepositories, RepositoryError } from '@/lib/repositories';
 /**
  * `true` si la lista existe y es de este espacio.
  *
- * Un fallo de consulta cuenta como "no existe", igual que antes: el codigo
- * anterior escribia `if (listError || !list || ajena)` y respondia 404 en los
- * tres casos. Se conserva lo observable.
+ * Un fallo de consulta sube y acaba en 500, no en 404.
  */
 async function listBelongsToWorkspace(id: string, workspaceId: string): Promise<boolean> {
-  try {
-    return (await getRepositories().lists.findById(id, workspaceId)) !== null;
-  } catch (error) {
-    if (error instanceof RepositoryError) return false;
-    throw error;
-  }
+  return (await getRepositories().lists.findById(id, workspaceId)) !== null;
 }
 
 const CreateItemSchema = z.object({

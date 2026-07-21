@@ -64,6 +64,18 @@ describe('logger', () => {
       expect(JSON.stringify(result)).not.toContain('absorcion');
     });
 
+    it('unwraps the cause, where a wrapped error keeps what actually failed', () => {
+      // A RepositoryError says "Failed to fetch list", which names nothing. The
+      // Postgres code underneath is the only part that identifies the failure.
+      const wrapped = new Error('Failed to fetch list');
+      (wrapped as Error & { cause: unknown }).cause = { code: '57014', message: 'canceling statement due to statement timeout' };
+
+      const result = redactError(wrapped) as { message: string; cause: { code: string } };
+
+      expect(result.message).toBe('Failed to fetch list');
+      expect(result.cause.code).toBe('57014');
+    });
+
     it('keeps a native Error identifiable', () => {
       const result = redactError(new Error('boom')) as { name: string; message: string };
 

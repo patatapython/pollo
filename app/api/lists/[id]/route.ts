@@ -9,17 +9,10 @@ import { getRepositories, List, RepositoryError } from '@/lib/repositories';
  * (404) de "existe pero es de otro espacio" (403), y para eso necesitan ver el
  * `workspace_id` real.
  *
- * Un fallo de consulta se devuelve como `null`, igual que una lista ausente.
- * No es un descuido: el codigo anterior hacia `if (error || !list)` y
- * respondia 404 en ambos casos, y este refactor no cambia lo observable.
+ * Un fallo de consulta sube y acaba en 500, no en 404.
  */
 async function findListForRoute(id: string): Promise<List | null> {
-  try {
-    return await getRepositories().lists.findById(id);
-  } catch (error) {
-    if (error instanceof RepositoryError) return null;
-    throw error;
-  }
+  return getRepositories().lists.findById(id);
 }
 
 const UpdateListSchema = z.object({
