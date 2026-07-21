@@ -3,12 +3,20 @@ import { RateLimitRepository, RepositoryError } from '@/lib/repositories/types';
 
 export const supabaseRateLimitRepository: RateLimitRepository = {
   async countFailedSince(ipAddress, since) {
-    const { count, error } = await getAdminClient()
+    const base = getAdminClient()
       .from('rate_limit_attempts')
       .select('*', { count: 'exact', head: true })
-      .eq('ip_address', ipAddress)
       .eq('success', false)
       .gt('attempted_at', since.toISOString());
+
+    // `.eq(columna, null)` genera `columna = NULL`, que en SQL nunca es cierto:
+    // devolveria cero siempre y apagaria el limitador para las peticiones sin
+    // direccion, sin ningun sintoma. La comparacion con NULL es `IS NULL`.
+    const query = ipAddress === null
+      ? base.is('ip_address', null)
+      : base.eq('ip_address', ipAddress);
+
+    const { count, error } = await query;
 
     if (error) throw new RepositoryError('Failed to count failed attempts', error);
 

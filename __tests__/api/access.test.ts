@@ -36,10 +36,11 @@ const MANGLED = 'Absorcion anillo academico animal acido';
 
 const WORKSPACE_ID = '11111111-2222-3333-4444-555555555555';
 
-function buildRequest(passphrase: unknown) {
+function buildRequest(passphrase: unknown, forwardedFor?: string) {
   return new NextRequest('http://localhost/api/workspaces/access', {
     method: 'POST',
     body: JSON.stringify(passphrase === undefined ? {} : { passphrase }),
+    headers: forwardedFor ? { 'x-forwarded-for': forwardedFor } : undefined,
   });
 }
 
@@ -158,7 +159,7 @@ describe('/api/workspaces/access', () => {
 
       expect(res.status).toBe(401);
       expect(createSession).not.toHaveBeenCalled();
-      expect(record).toHaveBeenCalledWith(expect.any(String), false, expect.any(Date));
+      expect(record).toHaveBeenCalledWith(null, false, expect.any(Date));
     });
 
     it('rejects a row whose lookup matches but whose hash does not', async () => {
@@ -179,6 +180,28 @@ describe('/api/workspaces/access', () => {
   });
 
   describe('rate limiting', () => {
+    it('keys on the client, not on the proxy chain it arrived through', async () => {
+      // Otherwise the same client counts as a new address per chain, and the
+      // ten-attempt budget can be walked past by varying the route in.
+      seedWorkspace(false);
+
+      await POST(buildRequest(ORIGINAL, '203.0.113.7, 70.41.3.18'));
+
+      expect(countFailedSince).toHaveBeenCalledWith('203.0.113.7', expect.any(Date));
+      expect(record).toHaveBeenCalledWith('203.0.113.7', false, expect.any(Date));
+    });
+
+    it('keys on null when no usable address arrives', async () => {
+      // The literal 'unknown' used to go here. It is not an address, and the
+      // read that uses it runs before anyone is authenticated.
+      seedWorkspace(false);
+
+      await POST(buildRequest(ORIGINAL));
+
+      expect(countFailedSince).toHaveBeenCalledWith(null, expect.any(Date));
+      expect(record).toHaveBeenCalledWith(null, false, expect.any(Date));
+    });
+
     it('returns 429 once the failed-attempt threshold is reached', async () => {
       countFailedSince.mockResolvedValue(10);
 

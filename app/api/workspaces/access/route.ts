@@ -5,6 +5,7 @@ import { computeLookup, verify, candidatePassphrases } from '@/lib/auth/passphra
 import { createSession } from '@/lib/auth/session';
 import { logger } from '@/lib/logger';
 import { getRepositories } from '@/lib/repositories';
+import { parseClientIp } from '@/lib/http/client-ip';
 
 const ENDPOINT = '/api/workspaces/access';
 const MAX_FAILED_ATTEMPTS = 10;
@@ -18,7 +19,7 @@ const WINDOW_MS = 15 * 60 * 1000;
  * Pero se registra, porque un limitador que deja de contar en silencio es peor
  * que no tener ninguno: aparenta proteger.
  */
-async function recordAttempt(ipAddress: string, success: boolean, at: Date) {
+async function recordAttempt(ipAddress: string | null, success: boolean, at: Date) {
   try {
     await getRepositories().rateLimits.record(ipAddress, success, at);
   } catch (error) {
@@ -45,7 +46,8 @@ export async function POST(request: NextRequest) {
     const validatedData = AccessSchema.parse(body);
 
     // Rate limiting check
-    const clientIp = request.headers.get('x-forwarded-for') || 'unknown';
+    // Primera entrada de la cadena y validada, o null. Ver lib/http/client-ip.ts.
+    const clientIp = parseClientIp(request.headers.get('x-forwarded-for'));
     const now = new Date();
     const windowStart = new Date(now.getTime() - WINDOW_MS);
 
