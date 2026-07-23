@@ -20,11 +20,33 @@ vi.mock('@/lib/repositories', async (importOriginal) => {
   return { ...actual, getRepositories: vi.fn() };
 });
 
+import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/health/route';
 import { getRepositories, RepositoryError } from '@/lib/repositories';
 import { logger } from '@/lib/logger';
 
 const mockedGetRepositories = vi.mocked(getRepositories);
+
+/**
+ * What the container health check sends: curl against 127.0.0.1:3000.
+ *
+ * A real `NextRequest` cannot carry the header here. `host` is a forbidden
+ * header name, and this suite runs under happy-dom, which enforces that rule
+ * and silently drops it -- measured: the same construction yields
+ * `'127.0.0.1:3000'` under plain node and `null` under happy-dom. So the route
+ * would refuse every request in this suite for a reason that has nothing to do
+ * with the route.
+ *
+ * The stub carries only what the handler reads. That the handler reads the real
+ * thing correctly was measured against a running server rather than asserted
+ * here: `Host: 127.0.0.1:3000` answered 200 and `Host: www.pollolist.app`
+ * answered 404. If this ever looks wrong, fix the harness -- not the route.
+ */
+function probeRequest(host = '127.0.0.1:3000') {
+  return {
+    headers: { get: (name: string) => (name.toLowerCase() === 'host' ? host : null) },
+  } as unknown as NextRequest;
+}
 
 function withPing(ping: () => Promise<void>) {
   mockedGetRepositories.mockReturnValue({
@@ -40,7 +62,7 @@ describe('GET /api/health', () => {
   it('answers 200 when the database answers', async () => {
     withPing(async () => {});
 
-    const response = await GET();
+    const response = await GET(probeRequest());
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ status: 'ok' });
@@ -50,7 +72,7 @@ describe('GET /api/health', () => {
     const ping = vi.fn(async () => {});
     withPing(ping);
 
-    await GET();
+    await GET(probeRequest());
 
     expect(ping).toHaveBeenCalledTimes(1);
   });
@@ -60,7 +82,7 @@ describe('GET /api/health', () => {
       throw new RepositoryError('connection refused', { code: 'ECONNREFUSED' });
     });
 
-    const response = await GET();
+    const response = await GET(probeRequest());
 
     expect(response.status).toBe(503);
   });
@@ -75,7 +97,7 @@ describe('GET /api/health', () => {
       throw new TypeError('undefined is not a function');
     });
 
-    const response = await GET();
+    const response = await GET(probeRequest());
 
     expect(response.status).toBe(503);
   });
@@ -88,7 +110,7 @@ describe('GET /api/health', () => {
       );
     });
 
-    const response = await GET();
+    const response = await GET(probeRequest());
     const body = JSON.stringify(await response.json());
 
     expect(body).not.toContain('hunter2');
@@ -103,9 +125,54 @@ describe('GET /api/health', () => {
       throw cause;
     });
 
-    await GET();
+    await GET(probeRequest());
 
     expect(logger.error).toHaveBeenCalled();
+  });
+
+  /**
+   * The probe is reachable only over loopback. Nothing legitimate calls it from
+   * the internet -- the container health check uses `curl 127.0.0.1:3000` --
+   * and left public it is an unauthenticated endpoint that takes a connection
+   * from a pool capped at 10, so it hands an attacker a cheap way to starve the
+   * application *and* silence the probe that exists to notice.
+   */
+  describe('reachability', () => {
+    it.each(['127.0.0.1:3000', 'localhost:3000', '127.0.0.1', '[::1]:3000'])(
+      'answers the probe on %s',
+      async (host) => {
+        withPing(async () => {});
+
+        const response = await GET(probeRequest(host));
+
+        expect(response.status).toBe(200);
+      }
+    );
+
+    it.each(['www.pollolist.app', 'pollolist.app', 'evil.example.com'])(
+      'is invisible from %s',
+      async (host) => {
+        withPing(async () => {});
+
+        const response = await GET(probeRequest(host));
+
+        // 404 and not 403: from outside it should not even look like it exists.
+        expect(response.status).toBe(404);
+      }
+    );
+
+    /**
+     * The refusal must come before the query, or blocking the endpoint would
+     * still leave the database load it was blocked to prevent.
+     */
+    it('does not touch the database for a request it refuses', async () => {
+      const ping = vi.fn(async () => {});
+      withPing(ping);
+
+      await GET(probeRequest('www.pollolist.app'));
+
+      expect(ping).not.toHaveBeenCalled();
+    });
   });
 
   /**
@@ -116,7 +183,7 @@ describe('GET /api/health', () => {
   it('forbids caching of the answer', async () => {
     withPing(async () => {});
 
-    const response = await GET();
+    const response = await GET(probeRequest());
 
     expect(response.headers.get('cache-control')).toContain('no-store');
   });

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getRepositories } from '@/lib/repositories';
 import { logger } from '@/lib/logger';
 
@@ -14,9 +14,23 @@ import { logger } from '@/lib/logger';
  * comprueba su unica dependencia declara sano justo el caso que deberia cazar,
  * y ademas hace creer que el problema esta cubierto.
  *
- * Es publica y sin autenticar, asi que la respuesta no lleva detalle alguno: el
- * motivo del fallo se registra en el servidor. Un mensaje de error de conexion
- * puede arrastrar la cadena de conexion entera con su contrasena dentro.
+ * La respuesta no lleva detalle alguno: el motivo del fallo se registra en el
+ * servidor. Un mensaje de error de conexion puede arrastrar la cadena de
+ * conexion entera con su contrasena dentro.
+ *
+ * SOLO RESPONDE POR LOOPBACK. El healthcheck del contenedor la llama con
+ * `curl http://127.0.0.1:3000/api/health`, sin pasar por el proxy. Desde
+ * internet no la llama nada legitimo, y expuesta ahi solo añade un endpoint sin
+ * autenticar que consume una conexion de un pool limitado a 10: quien quisiera
+ * ahogar la aplicacion tendria una forma barata de hacerlo, y ademas apagaria
+ * la sonda que existe para detectarlo.
+ *
+ * La distincion es la cabecera `Host`, y no es una heuristica: la pone curl en
+ * la sonda (`127.0.0.1:3000`) y la conserva Traefik en el trafico publico
+ * (`www.pollolist.app`). Falsificarla desde fuera no sirve, porque una peticion
+ * con `Host: 127.0.0.1` no casa la regla de enrutado del proxy y muere ahi. El
+ * puerto 3000 tampoco es alcanzable desde internet: no esta publicado y
+ * `DOCKER-USER` solo deja pasar 80 y 443 (docs/vps-network-boundary.md).
  */
 
 // Sin esto Next puede tratar el handler como estatico y servir para siempre el
@@ -26,7 +40,23 @@ export const dynamic = 'force-dynamic';
 
 const NO_STORE = { 'Cache-Control': 'no-store, max-age=0' };
 
-export async function GET() {
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
+
+/** El `Host` tal cual, sin el puerto, que es lo que distingue sonda de publico. */
+function isLoopbackRequest(request: NextRequest): boolean {
+  const host = request.headers.get('host') ?? '';
+  return LOOPBACK_HOSTS.has(host.replace(/:\d+$/, ''));
+}
+
+export async function GET(request: NextRequest) {
+  // 404 y no 403: desde fuera, esta ruta no deberia siquiera parecer existir.
+  if (!isLoopbackRequest(request)) {
+    return NextResponse.json(
+      { error: 'Not found' },
+      { status: 404, headers: NO_STORE }
+    );
+  }
+
   try {
     await getRepositories().health.ping();
   } catch (error) {
