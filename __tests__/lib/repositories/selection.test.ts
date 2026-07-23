@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getRepositories } from '@/lib/repositories';
 import { postgresListRepository } from '@/lib/repositories/postgres/lists';
 import { supabaseListRepository } from '@/lib/repositories/supabase/lists';
+import { postgresHealthRepository } from '@/lib/repositories/postgres/health';
+import { supabaseHealthRepository } from '@/lib/repositories/supabase/health';
 
 /**
  * The routes never name a database. This is the one place that does, so it is
@@ -31,6 +33,22 @@ describe('repository selection', () => {
 
     expect(repositories.lists).toBe(postgresListRepository);
     expect(repositories.items).not.toBe(supabaseListRepository);
+  });
+
+  /**
+   * The health probe follows the driver like everything else. Wiring it to one
+   * implementation only would make the probe interrogate a database the
+   * application is not using — reporting on Supabase while every request goes
+   * to the VPS, or the reverse. A probe pointed at the wrong dependency is
+   * worse than none, because it stays green through the outage.
+   */
+  it.each([
+    ['supabase', undefined, supabaseHealthRepository],
+    ['postgres', 'postgres', postgresHealthRepository],
+  ])('serves the %s health probe alongside its driver', (_name, driver, expected) => {
+    if (driver) process.env.DB_DRIVER = driver;
+
+    expect(getRepositories().health).toBe(expected);
   });
 
   /**

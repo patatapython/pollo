@@ -4,10 +4,12 @@ import { supabaseListRepository } from './supabase/lists';
 import { supabaseItemRepository } from './supabase/items';
 import { supabaseWorkspaceRepository } from './supabase/workspaces';
 import { supabaseRateLimitRepository } from './supabase/rate-limits';
+import { supabaseHealthRepository } from './supabase/health';
 import { postgresListRepository } from './postgres/lists';
 import { postgresItemRepository } from './postgres/items';
 import { postgresWorkspaceRepository } from './postgres/workspaces';
 import { postgresRateLimitRepository } from './postgres/rate-limits';
+import { postgresHealthRepository } from './postgres/health';
 
 /**
  * Punto unico donde se elige la implementacion. Las rutas piden repositorios,
@@ -22,12 +24,14 @@ const IMPLEMENTATIONS: Record<DbDriver, Repositories> = {
     lists: supabaseListRepository,
     items: supabaseItemRepository,
     rateLimits: supabaseRateLimitRepository,
+    health: supabaseHealthRepository,
   },
   postgres: {
     workspaces: postgresWorkspaceRepository,
     lists: postgresListRepository,
     items: postgresItemRepository,
     rateLimits: postgresRateLimitRepository,
+    health: postgresHealthRepository,
   },
 };
 

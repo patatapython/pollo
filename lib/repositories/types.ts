@@ -131,9 +131,26 @@ export interface RateLimitRepository {
   deleteOlderThan(cutoff: Date): Promise<number>;
 }
 
+export interface HealthRepository {
+  /**
+   * Viaje de ida y vuelta mas barato posible hasta la base de datos.
+   *
+   * Existe para que la sonda de salud pueda *comprobar* la unica dependencia
+   * que puede caerse, en vez de suponerla. Una sonda que responde 200 sin
+   * tocar la base es peor que no tener sonda: declara sano un contenedor que
+   * no puede servir, y el orquestador lo deja en produccion por eso mismo.
+   *
+   * No devuelve nada a proposito. Lo unico que interesa saber es si lanza:
+   * cualquier dato que devolviera invitaria a tomar decisiones con el, y esto
+   * no es una consulta, es una comprobacion de vida.
+   */
+  ping(): Promise<void>;
+}
+
 export interface Repositories {
   workspaces: WorkspaceRepository;
   lists: ListRepository;
   items: ItemRepository;
   rateLimits: RateLimitRepository;
+  health: HealthRepository;
 }
