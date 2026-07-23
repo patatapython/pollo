@@ -39,6 +39,45 @@ table above is incomplete and says so.
 - **Supabase scheduled jobs** (`pg_cron`, edge functions, webhooks). None are
   known, and none have been ruled out.
 
+## Risks the move did not create, but did sharpen
+
+Nothing below is new code. Each was survivable on Vercel because of what Vercel
+was, and is not obviously survivable on one container. Moving platforms changes
+the severity of code that never changed, and that re-evaluation is easy to skip
+because no diff shows it.
+
+**`POST /api/workspaces` is unauthenticated, unrate-limited, and expensive.**
+It generates a passphrase and hashes it with bcrypt at cost 12, then writes a
+workspace, a list and six items. Measured against production: **~650 ms per
+request**. On Vercel that sat behind autoscaling and edge protection. Here it is
+a single container: a handful of concurrent callers pins the CPU, starves every
+other request, and takes the health probe down with it — so the probe added to
+notice a wedged app would report the symptom of an attack it cannot distinguish
+from a crash. It is also unbounded row growth by anonymous callers.
+
+It appears in neither `plans/backlog.md` nor the accepted-risk list of
+`plans/README.md`, so it has never been weighed — it was simply never load
+bearing before.
+
+**`/api/health` was reachable from the internet and bought nothing by being so.
+Fixed.** The container probe calls it over loopback
+(`curl http://127.0.0.1:3000/...`), so public exposure added only an
+unauthenticated endpoint taking a database connection from a pool capped at 10 —
+a cheap way to starve the application *and* silence the probe that exists to
+notice.
+
+The route now answers only when the `Host` header is a loopback address, and
+answers `404` otherwise, so from outside it does not even look like it exists.
+The refusal happens before the query, or blocking the endpoint would still leave
+the load it was blocked to prevent.
+
+This is enforced in the application rather than in Traefik on purpose: a proxy
+rule would live in a hand-placed file on one host, or in labels Coolify
+regenerates, and either way the protection would not travel with the code.
+`Host` is not a heuristic here — curl sets it on the probe and Traefik preserves
+it for public traffic, and a forged `Host: 127.0.0.1` from outside never reaches
+the application because it fails the proxy's routing rule first.
+
 ## The guard that now exists
 
 For environment variables specifically, the class of bug is closed rather than

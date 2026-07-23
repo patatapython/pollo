@@ -21,10 +21,14 @@ Steps marked **[manual]** need a dashboard or registrar login.
 
 ---
 
-## 1. Environment: change nothing
+## 1. Environment: add nothing that changes behaviour
 
-The Coolify application (`pollo-app-staging`, UUID `k10xvndm2s5gqx9usbihs10j`)
-is already configured correctly. Resist the two tempting edits:
+The Coolify application (`pollo`, UUID `k10xvndm2s5gqx9usbihs10j`) is configured
+correctly for the cutover itself. One variable was added afterwards, and for a
+different reason: `CRON_SECRET`, which was missing entirely and is what
+`/api/cron/cleanup-rate-limits` needs — see `docs/platform-dependency-audit.md`.
+
+For the cutover, resist the two tempting edits:
 
 - **Do not delete the `NEXT_PUBLIC_SUPABASE_*` placeholders.** The driver is
   `postgres` and no data goes through Supabase, but
@@ -138,9 +142,11 @@ for as long as the record says it should.
 
 ## Still open
 
-- Auto-deploy is disabled on the Coolify app: pushing to `feat/vps-schema` does
-  not redeploy. Trigger deployments explicitly, or enable it once the branch is
-  the deployment target.
+- The Coolify app now tracks `main`, which is also what Vercel deploys, so a
+  push goes to both until Vercel is decommissioned. Whether Coolify redeploys
+  automatically is **unverified**: the API reports `is_auto_deploy_enabled:
+  null`, so the only honest answer is that nobody has watched a push and
+  checked. Deployments in this runbook are triggered explicitly.
 - `.env.example` documents neither `DB_DRIVER` nor `DATABASE_URL`.
 - `docs/vps-network-boundary.md` still carries one unexercised claim: firewall
   propagation across a real `docker.service` restart.
