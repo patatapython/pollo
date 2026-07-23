@@ -29,6 +29,73 @@ describe('validateEnvVars', () => {
         expect(() => validateEnvVars()).not.toThrow();
     });
 
+    /**
+     * The capability tier, which is the whole reason CRON_SECRET stopped being
+     * invisible. It must warn and must NOT throw: refusing to serve the site
+     * because a nightly sweep has no secret trades a degraded background job
+     * for a total outage.
+     *
+     * These were written during the final loopback, after noticing the
+     * behaviour had no tests at all *and* had never executed anywhere -- the
+     * secret was configured before the warning shipped, so the branch had
+     * never once run.
+     */
+    describe('capability variables', () => {
+        function validConfig() {
+            process.env.JWT_SECRET = 'a-super-long-secret-key-that-is-at-least-32-chars';
+            process.env.SERVER_SECRET = 'another-super-long-secret-key-that-is-at-least-32-chars';
+            process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+            process.env.SUPABASE_SERVICE_ROLE_KEY = 'ey...';
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'ey...';
+            // NODE_ENV no se asigna aqui: vitest ya lo deja puesto y el
+            // beforeEach clona el entorno, asi que escribirlo solo añadiria un
+            // cuarto TS2540 a los tres preexistentes de este fichero.
+        }
+
+        it('warns, and does not throw, when CRON_SECRET is absent', () => {
+            validConfig();
+            delete process.env.CRON_SECRET;
+            const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            expect(() => validateEnvVars()).not.toThrow();
+
+            const said = spy.mock.calls.flat().join(' ');
+            expect(said).toContain('CRON_SECRET');
+            // The message has to name what stops working, or it is just noise
+            // in a log nobody reads -- which is how this got missed.
+            expect(said).toContain('cleanup-rate-limits');
+            spy.mockRestore();
+        });
+
+        it('stays quiet once CRON_SECRET is configured', () => {
+            validConfig();
+            process.env.CRON_SECRET = 'a-cron-secret';
+            const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            validateEnvVars();
+
+            expect(spy).not.toHaveBeenCalled();
+            spy.mockRestore();
+        });
+
+        /**
+         * Order matters. A missing required variable already aborts the boot,
+         * and printing a list of disabled capabilities on the way out buries
+         * the error that actually explains the failure.
+         */
+        it('says nothing about capabilities when a required variable is missing', () => {
+            validConfig();
+            delete process.env.JWT_SECRET;
+            delete process.env.CRON_SECRET;
+            const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            expect(() => validateEnvVars()).toThrow();
+
+            expect(spy).not.toHaveBeenCalled();
+            spy.mockRestore();
+        });
+    });
+
     it('should throw if a required variable is missing', () => {
         // Falta JWT_SECRET
         process.env.SERVER_SECRET = 'another-super-long-secret-key-that-is-at-least-32-chars';

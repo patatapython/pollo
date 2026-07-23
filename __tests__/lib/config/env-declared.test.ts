@@ -21,7 +21,9 @@ import { DECLARED_ENV_VARS } from '@/lib/config/env';
  * wired somewhere.
  */
 
-const ROOTS = ['app', 'lib', 'middleware.ts'];
+// `next.config.ts` reads the environment too, and a variable read only there
+// would otherwise slip past a test whose whole claim is that nothing slips past.
+const ROOTS = ['app', 'lib', 'middleware.ts', 'next.config.ts'];
 const ENV_READ = /process\.env\.([A-Z_][A-Z0-9_]*)/g;
 
 function sourceFiles(path: string): string[] {
