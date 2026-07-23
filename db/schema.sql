@@ -3,10 +3,24 @@
 -- Derivado del DDL real de produccion (supabase/live-schema.sql, 2026-07-21),
 -- no del antiguo supabase/schema.sql, que no describia la base viva.
 --
--- No se migran datos: los 137 espacios existentes eran 85 copias de la lista de
--- ejemplo mas pruebas de teclado, sin actividad desde el 2026-05-08. Empezar
--- vacio permite dejar fuera lo que una migracion de datos habria obligado a
--- arrastrar. Lo eliminado respecto de produccion, y por que:
+-- No se migran datos. Esa decision se tomo el 2026-07-21 describiendo los 137
+-- espacios como "85 copias de la lista de ejemplo mas pruebas de teclado", una
+-- frase sin consulta detras. Medido el 2026-07-23 contra la base viva:
+--
+--   57  muestra sembrada, intacta
+--   41  vacios, sin ninguna lista
+--   39  CON contenido real: listas renombradas, articulos propios,
+--       107 casillas marcadas en total. El mayor tenia 69 articulos y 58
+--       completados, con ultima escritura el 2026-05-08
+--
+-- Es decir, la frase se quedaba corta: 39 no eran pruebas de teclado. La
+-- decision se mantiene igualmente porque el propietario confirmo el 2026-07-23
+-- que esos 39 son suyos, de probar la aplicacion, y que no le importa perderlos.
+-- Se deja escrito para que nadie la reabra creyendo que hay usuarios detras: no
+-- los hay, y eso esta comprobado, no supuesto.
+--
+-- Empezar vacio permite ademas dejar fuera lo que una migracion habria obligado
+-- a arrastrar. Lo eliminado respecto de produccion, y por que:
 --
 --   tablas premium_codes e invite_codes  el codigo que las usaba se borro en
 --                                        febrero; las tablas se quedaron
