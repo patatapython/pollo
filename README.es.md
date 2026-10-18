@@ -12,9 +12,9 @@
 
 [![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
+[![Self-hosted](https://img.shields.io/badge/Self--hosted-Coolify_en_un_VPS-6B16ED?style=flat-square)](https://coolify.io)
 [![PWA](https://img.shields.io/badge/PWA-5A0FC8?style=flat-square&logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
 [![MIT License](https://img.shields.io/badge/Licencia-MIT-f0c040?style=flat-square)](LICENSE)
 
@@ -57,7 +57,7 @@
 
 ## La idea
 
-La mayoría de apps te hacen crear una cuenta antes de que puedas hacer algo útil. Te piden el email, que lo verifiques, que elijas contraseña, que aceptes la política de privacidad — y para entonces ya has olvidado lo que querías apuntar.
+La mayoría de apps te hacen crear una cuenta antes de que puedas hacer algo útil. Te piden el email, que lo verifiques, que elijas contraseña, que aceptes la política de privacidad, y para entonces ya has olvidado lo que querías apuntar.
 
 Pollo funciona diferente.
 
@@ -87,7 +87,7 @@ Este es el núcleo técnico del proyecto.
 
 ### Generación
 
-Las passphrases se generan desde un diccionario curado de **7.776 palabras en español** obtenido de [dadoware-bonito-es](https://github.com/mir123/dadoware-bonito-es) de [@mir123](https://github.com/mir123) — una lista de palabras Diceware en español basada en el estándar EFF. Se seleccionan cinco palabras con `crypto.getRandomValues()` y rejection sampling para eliminar el sesgo de módulo:
+Las passphrases se generan desde un diccionario curado de **7.776 palabras en español** obtenido de [dadoware-bonito-es](https://github.com/mir123/dadoware-bonito-es) de [@mir123](https://github.com/mir123), una lista de palabras Diceware en español basada en el estándar EFF. Se seleccionan cinco palabras con `crypto.getRandomValues()` y rejection sampling para eliminar el sesgo de módulo:
 
 ```typescript
 function getSecureRandomIndex(max: number): number {
@@ -106,7 +106,7 @@ function getSecureRandomIndex(max: number): number {
 }
 ```
 
-**Entropía:** ~12,9 bits × 5 palabras = **~64,5 bits totales** — 7.776⁵ ≈ 28 billones de combinaciones. La fuerza bruta no es un ataque viable.
+**Entropía:** ~12,9 bits × 5 palabras = **~64,5 bits totales**: 7.776⁵ ≈ 28 billones de combinaciones. La fuerza bruta no es un ataque viable.
 
 ### Almacenamiento: dos hashes, un secreto, cero texto plano
 
@@ -114,10 +114,10 @@ La passphrase **nunca se almacena en texto plano**. Se guardan dos valores deriv
 
 | Campo | Algoritmo | Propósito |
 |---|---|---|
-| `passphrase_hash` | bcrypt (12 rondas) | Verificación — lento por diseño |
+| `passphrase_hash` | bcrypt (12 rondas) | Verificación, lento por diseño |
 | `passphrase_lookup` | HMAC-SHA256 | Búsqueda O(1) indexada |
 
-bcrypt es no determinista — no puedes hacer `WHERE hash = bcrypt(input)`, sería un escaneo completo. HMAC es determinista: misma entrada + mismo secreto = misma salida. El login es una sola consulta indexada.
+bcrypt es no determinista: no puedes hacer `WHERE hash = bcrypt(input)`, sería un escaneo completo. HMAC es determinista: misma entrada + mismo secreto = misma salida. El login es una sola consulta indexada.
 
 ```mermaid
 flowchart LR
@@ -140,13 +140,14 @@ flowchart LR
 |---|---|
 | **Auth sin cuenta** | Passphrase de cinco palabras, generada criptográficamente |
 | **Múltiples listas** | Listas e items ilimitados por workspace |
-| **Sync en tiempo real** | Supabase Realtime vía WebSockets |
 | **Soporte offline** | Funciona sin internet, sincroniza al reconectar |
 | **Kit de recuperación** | Exporta la passphrase como archivo de texto o imagen |
 | **Bilingüe** | Interfaz completa en español e inglés con selector de idioma |
-| **Mobile-first** | UI responsive y táctil — instálala como PWA desde el navegador |
+| **Mobile-first** | UI responsive y táctil; se instala como PWA desde el navegador |
 | **Rate limiting** | Protección por IP contra fuerza bruta |
 | **Sin tracking** | Sin analytics, sin cookies más allá de la sesión |
+
+**Todavía no: sincronización en vivo entre dispositivos.** La primera versión dependía de las suscripciones a cambios de la base de datos alojada, y nunca llegó a recibir un evento: la suscripción conectaba, pero la seguridad a nivel de fila no tenía política para clientes anónimos. Se está rehaciendo con `LISTEN/NOTIFY` de PostgreSQL y Server-Sent Events. Mientras tanto, los cambios hechos desde otro dispositivo aparecen al recargar la lista.
 
 ---
 
@@ -154,13 +155,15 @@ flowchart LR
 
 [![Next.js](https://img.shields.io/badge/Next.js_16_(App_Router)-000?style=for-the-badge&logo=nextdotjs)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Supabase](https://img.shields.io/badge/Supabase_(PostgreSQL)-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Tailwind](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Zustand](https://img.shields.io/badge/Zustand-FF6B35?style=for-the-badge)](https://zustand-demo.pmnd.rs)
 [![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev)
-[![Vercel](https://img.shields.io/badge/Vercel-000?style=for-the-badge&logo=vercel)](https://vercel.com)
+[![Coolify](https://img.shields.io/badge/Coolify_+_Traefik-6B16ED?style=for-the-badge)](https://coolify.io)
 
-La capa de auth es completamente custom: **JWT** (`jose`) + **bcrypt** (`bcryptjs`) + **HMAC-SHA256** (Web Crypto API). Sin dependencias de librerías de auth.
+La capa de auth es completamente propia: **JWT** (`jose`) + **bcrypt** (`bcryptjs`) + **HMAC-SHA256** (Web Crypto API). Sin dependencias de librerías de auth.
+
+Producción corre en un VPS propio: la aplicación en un contenedor gestionado por Coolify, TLS con Traefik y Let's Encrypt, y un PostgreSQL propio al que no se puede llegar desde internet. El acceso a datos pasa por una capa de repositorios (`lib/repositories`) construida sobre `postgres.js`.
 
 ---
 
@@ -168,15 +171,16 @@ La capa de auth es completamente custom: **JWT** (`jose`) + **bcrypt** (`bcryptj
 
 | Riesgo | Solución |
 |---|---|
-| Almacenamiento de passphrase | bcrypt factor 12 — lento intencionalmente |
+| Almacenamiento de passphrase | bcrypt factor 12, lento a propósito |
 | Búsqueda de passphrase | HMAC-SHA256 con secreto server-side |
 | Sesión | JWT HS256, cookie httpOnly, expiración 24h |
-| XSS | Cookies httpOnly — JS no puede leer el token |
+| XSS | Cookies httpOnly: JS no puede leer el token |
 | CSRF | SameSite=lax |
 | Clickjacking | `X-Frame-Options: DENY` |
 | Fuerza bruta | Rate limiting por IP |
 | Transporte | HSTS max-age 2 años |
-| Secretos | Validados al arrancar — la app no bootea si faltan |
+| Exposición de la base de datos | Inaccesible desde internet: cortafuegos de denegación por defecto en la cadena propia de Docker, reinstalado en cada arranque ([detalle](docs/vps-network-boundary.md)) |
+| Secretos | Validados al arrancar: la app no arranca si falta alguno |
 
 ---
 
@@ -203,16 +207,16 @@ items
   list_id           UUID → lists
   name              VARCHAR(500)
   is_completed      BOOLEAN
-  completed_at      TIMESTAMPTZ   -- auto-set por trigger
+  completed_at      TIMESTAMPTZ   -- lo pone y lo quita un trigger
   position          INT
 
 rate_limit_attempts
   ip_address        INET
   success           BOOLEAN
-  attempted_at      TIMESTAMPTZ   -- limpieza automática a las 24h
+  attempted_at      TIMESTAMPTZ   -- se borra a los 7 días con una tarea diaria
 ```
 
-Índices en cada FK y campo de búsqueda. `passphrase_lookup` tiene índice único — el login es siempre una sola consulta indexada.
+Índices en cada FK y campo de búsqueda. `passphrase_lookup` tiene índice único, así que el login es siempre una sola consulta indexada. El DDL completo, con el porqué de cada decisión, está en [`db/schema.sql`](db/schema.sql).
 
 </details>
 
@@ -220,35 +224,44 @@ rate_limit_attempts
 
 ## Ejecución local
 
-**Requisitos:** Node.js 18+, proyecto de [Supabase](https://supabase.com).
+**Requisitos:** Node.js 20.9+ y Docker.
 
 ```bash
 git clone https://github.com/patatapython/pollo.git
 cd pollo
 npm install
-cp .env.example .env.local   # rellena tus valores
+
+# PostgreSQL 16 en Docker, en el puerto 55432
+npm run test:db:up
+docker exec pollo-pg-dev sh -c 'until pg_isready -h 127.0.0.1 -q; do sleep 1; done'
+docker exec -i pollo-pg-dev psql -U postgres -d pollo -v ON_ERROR_STOP=1 < db/schema.sql
+
+cp .env.example .env.local   # y rellena tus secretos
 npm run dev
 ```
 
-Migraciones: Supabase → SQL Editor → ejecutar archivos en `supabase/migrations/` en orden.
-
 <details>
-<summary>Variables de entorno</summary>
+<summary>Variables de entorno (las mismas que <code>.env.example</code>)</summary>
 
 ```env
-# Requeridas
+# Obligatorias
+DB_DRIVER=postgres
+DATABASE_URL=postgres://postgres:dev@127.0.0.1:55432/pollo
+JWT_SECRET=minimo-32-caracteres-aleatorios
+SERVER_SECRET=minimo-32-caracteres-aleatorios
+
+# Opcional: activa el endpoint de limpieza diaria /api/cron/cleanup-rate-limits
+CRON_SECRET=cadena-aleatoria
+
+# Temporales: las sigue leyendo el cliente de realtime antiguo (lib/supabase/realtime.ts)
+# y sin ellas la página de la lista no carga. Desaparecen con la reescritura a SSE.
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-JWT_SECRET=cadena-aleatoria-minimo-32-chars
-SERVER_SECRET=cadena-aleatoria-minimo-32-chars
-
-# Opcionales
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-
 ```
 
-Genera secretos: `openssl rand -base64 48`
+Generar secretos: `openssl rand -base64 48`
+
+`DB_DRIVER` se escribe a propósito. La aplicación no deduce la base de datos de las variables que haya definidas, así que una variable olvidada nunca puede cambiarla en silencio por otra.
 
 </details>
 
@@ -268,7 +281,7 @@ El tradeoff es deliberado: pierdes tus cinco palabras, pierdes tu workspace. No 
 <details>
 <summary>¿Por qué HMAC para lookup en vez de bcrypt?</summary>
 
-bcrypt es no determinista — dos hashes del mismo input dan valores distintos. `WHERE hash = bcrypt(input)` es imposible. Necesitarías un escaneo completo de la tabla.
+bcrypt es no determinista: dos hashes del mismo input dan valores distintos. `WHERE hash = bcrypt(input)` es imposible. Necesitarías un escaneo completo de la tabla.
 
 HMAC-SHA256 es determinista. Se computa en el login, se consulta `WHERE lookup = hmac(input, secret)` sobre una columna indexada. Una sola consulta, tiempo constante, escala indefinidamente.
 
@@ -277,9 +290,16 @@ El secreto HMAC nunca toca la base de datos. Acceso completo a la DB + sin secre
 </details>
 
 <details>
+<summary>¿Por qué una capa de repositorios?</summary>
+
+Pollo empezó en Supabase y se mudó a un PostgreSQL propio en un VPS. Las rutas nunca hablan con un cliente de base de datos: piden a `lib/repositories` workspaces, listas, items y rate limits, y `DB_DRIVER` elige la implementación. Eso convirtió la mudanza en un cambio de configuración respaldado por tests, no en una reescritura, y la implementación antigua se queda como vuelta atrás hasta que se apague la plataforma anterior.
+
+</details>
+
+<details>
 <summary>¿Por qué Zustand en vez de Redux?</summary>
 
-El estado es pequeño y viene del servidor. La API minimalista de Zustand — sin boilerplate, sin providers, sin split de actions/reducers — encaja con la filosofía del proyecto: lo mínimo necesario, bien hecho.
+El estado es pequeño y viene del servidor. La API minimalista de Zustand (sin boilerplate, sin providers, sin split de actions/reducers) encaja con la filosofía del proyecto: lo mínimo necesario, bien hecho.
 
 </details>
 
@@ -288,11 +308,13 @@ El estado es pequeño y viene del servidor. La API minimalista de Zustand — si
 ## Tests
 
 ```bash
-npm test          # Ejecutar todos los tests
-npm run test:ui   # Vitest UI en el navegador
+npm test             # tests unitarios y de API
+npm run test:ui      # Vitest UI en el navegador
+npm run test:db:up   # arranca el contenedor de PostgreSQL 16 de pruebas
+npm run test:db      # tests de integración contra esa base de datos real
 ```
 
-Cubre: crypto de passphrases, ciclo de sesiones, validación de APIs, validación de env al arrancar.
+Los tests unitarios y de API cubren el crypto de passphrases, el ciclo de sesiones, la validación de las APIs y sus caminos de error, las comprobaciones de arranque y un escaneo que falla si el código lee una variable de entorno que nadie declaró. La suite de integración aplica `db/schema.sql` a una base vacía y ejecuta cada repositorio de PostgreSQL contra ella, porque un doble de test confirmaría encantado un rate limiter que no cuenta nada.
 
 ---
 
@@ -304,7 +326,7 @@ Proyecto de portfolio, pero issues y PRs son bienvenidos. Para problemas de segu
 
 ## Licencia
 
-MIT — ver [LICENSE](LICENSE).
+MIT, ver [LICENSE](LICENSE).
 
 ---
 
